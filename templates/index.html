@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sonserrat.KTY</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/model-selector.css') }}">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <button id="new-chat" class="new-chat-button">
+                    <i class="fas fa-plus"></i>
+                    Nuevo chat
+                </button>
+            </div>
+
+            <div class="sidebar-section starred">
+                <h2>Destacados</h2>
+                <div class="starred-chats">
+                    <!-- Chats destacados irán aquí -->
+                </div>
+            </div>
+            <div class="sidebar-section recent">
+                <h2>Recientes</h2>
+                <div class="recent-chats">
+                    <!-- Chats recientes irán aquí -->
+                </div>
+            </div>
+            <div class="sidebar-footer">
+                <div class="user-menu">
+                    <div class="user-info" id="user-info-trigger">
+                        <i class="fas fa-user"></i>
+                        <span>{{ current_user.username }}</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="user-dropdown" id="user-dropdown">
+                        <a href="/logout" class="logout-option">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Cerrar sesión</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="chat-header">
+                <div class="chat-title">
+                    <h1>Sonserrat.KTY</h1>
+                    <div class="model-selector-container">
+                        <div class="model-icon-container">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <span id="model-name">Chat.KTY (VISION)</span>
+                        <i class="fas fa-chevron-down"></i>
+                        <select id="model-selector" style="display: none;">
+                            <option value="gemini">Chat.KTY (VISION)</option>
+                            <option value="groq">Jaime LLM pro 2.0</option>
+                            <option value="gemini-flash">Gemini 2.0 Flash (Imágenes)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <a href="/logout" class="logout-button-discrete">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </a>
+                    <button id="reset-chat" class="action-button">
+                        <i class="fas fa-redo"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chat-messages">
+                <!-- Los mensajes se agregarán dinámicamente aquí -->
+            </div>
+
+            <div class="chat-input-container">
+                <div class="input-indicators">
+                    <div class="model-indicator">
+                        <i class="fas fa-robot"></i>
+                        <span id="model-name">Chat.KTY (VISION)</span>
+                    </div>
+                    <div class="mode-indicators">
+                        <div class="search-mode-indicator" id="search-mode">
+                            <i class="fas fa-search"></i>
+                            <span>Modo búsqueda</span>
+                        </div>
+                        <div class="video-mode-indicator" id="video-mode">
+                            <i class="fas fa-video"></i>
+                            <span>Modo video</span>
+                        </div>
+                    </div>
+                </div>
+
+                <form id="chat-form" class="chat-form">
+                    <div class="attachments-preview" id="attachments-preview">
+                        <!-- Las miniaturas se mostrarán aquí -->
+                    </div>
+                    <div class="input-wrapper">
+                        <textarea 
+                            id="user-input" 
+                            placeholder="Envía un mensaje..."
+                            rows="1"
+                            autofocus
+                        ></textarea>
+                        <div class="input-actions">
+                            <button type="button" class="action-button video-button" title="Activar/Desactivar modo video" id="video-button">
+                                <i class="fas fa-video"></i>
+                            </button>
+                            <button type="button" class="action-button search-button" title="Activar/Desactivar búsqueda web" id="web-search">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <label class="action-button upload-button" title="Subir archivo">
+                                <i class="fas fa-paperclip"></i>
+                                <input type="file" 
+                                    id="file-input" 
+                                    accept="image/*,video/*,.pdf,.doc,.docx,.txt"
+                                    style="display: none;">
+                            </label>
+                            <button type="submit" class="action-button send-button" title="Enviar mensaje">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="input-info">
+                        Presiona Enter para enviar
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/model-selector-enhanced.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/user-dropdown.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/mobile-menu.js') }}"></script>
+</body>
+</html>

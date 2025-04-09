@@ -1,0 +1,183 @@
+/* Estilos específicos para dispositivos móviles */
+
+/* Variables */
+:root {
+    --sidebar-width: 260px;
+    --sidebar-transition: transform 0.3s ease-in-out;
+}
+
+/* Estilos para el botón de hamburguesa */
+.hamburger-menu {
+    display: none;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 1000;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    margin-right: 10px; /* Añadir margen para separarlo del botón de nuevo chat */
+}
+
+.hamburger-menu:hover {
+    background-color: var(--accent-hover);
+}
+
+/* Estilos para dispositivos móviles */
+@media (max-width: 768px) {
+    .hamburger-menu {
+        display: flex;
+    }
+    
+    /* Estilos adicionales para los contenedores de chats */
+    .recent-chats, .starred-chats {
+        max-height: 100%;
+        overflow-y: auto;
+    }
+
+    .app-container {
+        position: relative;
+        overflow-x: hidden;
+    }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: var(--sidebar-width);
+        z-index: 999;
+        transform: translateX(-100%);
+        transition: var(--sidebar-transition);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        background-color: var(--sidebar-bg);
+        visibility: visible;
+        overflow-y: auto;
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+        display: block;
+        overflow-y: auto; /* Habilitar desplazamiento vertical */
+    }
+    
+    /* Prevenir scroll cuando el sidebar está abierto */
+    body.sidebar-open {
+        overflow: hidden;
+    }
+
+    .main-content {
+        width: 100%;
+        margin-left: 0;
+        transition: margin-left 0.3s ease-in-out;
+    }
+
+    .chat-header {
+        padding-left: 60px; /* Espacio para el botón de hamburguesa */
+    }
+
+    /* Ajustes para el contenedor de mensajes */
+    .message {
+        max-width: 85%;
+    }
+
+    /* Ajustes para el área de entrada */
+    .input-wrapper {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .input-actions {
+        width: 100%;
+        justify-content: space-around;
+        padding-top: 0.5rem;
+    }
+    
+    #user-input {
+        width: 100%;
+        text-align: left;
+    }
+
+    /* Ajustes para los indicadores de modo */
+    .input-indicators {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .mode-indicators {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    /* Ajustes para la previsualización de archivos */
+    .attachments-preview {
+        max-height: 120px;
+    }
+
+    /* Overlay para cerrar el sidebar al tocar fuera */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 998;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .sidebar-overlay.active {
+        display: block;
+        opacity: 1;
+    }
+}
+
+/* Animación para el botón de hamburguesa */
+.hamburger-icon {
+    position: relative;
+    width: 20px;
+    height: 16px;
+}
+
+.hamburger-icon span {
+    position: absolute;
+    height: 2px;
+    width: 100%;
+    background-color: white;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.hamburger-icon span:nth-child(1) {
+    top: 0;
+}
+
+.hamburger-icon span:nth-child(2) {
+    top: 7px;
+}
+
+.hamburger-icon span:nth-child(3) {
+    top: 14px;
+}
+
+.hamburger-menu.active .hamburger-icon span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+}
+
+.hamburger-menu.active .hamburger-icon span:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger-menu.active .hamburger-icon span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -7px);
+}

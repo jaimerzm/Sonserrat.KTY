@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - Sonserrat.KTY</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/auth-modern.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="auth-page">
+    <div class="floating-shapes">
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+    </div>
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <i class="fas fa-brain auth-icon"></i>
+                <h1>Sonserrat.KTY</h1>
+            </div>
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="flash-messages">
+                {{ messages[0] }}
+            </div>
+            {% endif %}
+            {% endwith %}
+            <form method="POST" action="{{ url_for('auth.login') }}">
+                <div class="form-group">
+                    <div class="input-icon">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" name="email" placeholder="Email" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="input-icon">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" name="password" placeholder="Contraseña" required>
+                    </div>
+                </div>
+                <div class="form-group remember-me">
+                    <label>
+                        <input type="checkbox" name="remember">
+                        Mantener sesión iniciada
+                    </label>
+                </div>
+                <button type="submit" class="auth-button">
+                    <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                </button>
+            </form>
+            <div class="auth-separator">
+                <span>O</span>
+            </div>
+            <div class="social-login">
+                <a href="{{ url_for('auth.login_google') }}" class="social-button google-button">
+                    <i class="fab fa-google"></i> Iniciar sesión con Google
+                </a>
+                <a href="#" id="guest-login-btn" class="social-button guest-button">
+                    <i class="fas fa-user-clock"></i> Continuar sin iniciar sesión
+                </a>
+            </div>
+            <div class="auth-links">
+                <p>¿No tienes una cuenta? <a href="{{ url_for('auth.register') }}">Regístrate</a></p>
+            </div>
+            
+            <!-- Modal para confirmar acceso como invitado -->
+            <div id="guest-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>Continuar como invitado</h2>
+                        <span class="close">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <p><i class="fas fa-exclamation-triangle"></i> Aviso importante</p>
+                        <p>Si continúas sin iniciar sesión:</p>
+                        <ul>
+                            <li>No se guardará tu historial de chats</li>
+                            <li>Perderás todas tus conversaciones al cerrar sesión</li>
+                            <li>No podrás acceder a funciones personalizadas</li>
+                        </ul>
+                    </div>
+                    <div class="modal-footer">
+                        <a href="{{ url_for('auth.guest_login') }}" class="auth-button guest-confirm-button">
+                            <i class="fas fa-check"></i> Entiendo, continuar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/guest-login-modal.js') }}"></script>
+</body>
+</html>
