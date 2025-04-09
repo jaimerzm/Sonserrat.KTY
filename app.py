@@ -204,7 +204,17 @@ app.config['REMEMBER_COOKIE_HTTPONLY'] = True
 
 # Inicializar extensiones
 db.init_app(app)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+# Importar configuración optimizada de SocketIO
+from socketio_config import socketio_config
+
+# Configuración optimizada de SocketIO para reducir uso de memoria
+socketio = SocketIO(app, **socketio_config)
+
+# Configurar monitoreo de memoria para SocketIO
+if os.environ.get('RENDER', False):
+    from socketio_config import monitor_socketio_memory
+    monitor_socketio_memory(socketio, interval=300)
 
 # Inicializar OAuth con la app Flask
 oauth.init_app(app)
