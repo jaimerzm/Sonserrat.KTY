@@ -1,0 +1,35 @@
+# Archivos de entorno
+.env
+
+# Archivos de caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Archivos de base de datos SQLite
+instance/
+*.sqlite
+
+# Archivos de registro
+*.log
+
+# Archivos temporales
+*.tmp
+
+# Archivos de carga
+uploads/*
+!uploads/.gitkeep
+
+# Archivos de sesión Flask
+flask_session/
+
+# Entorno virtual
+venv/
+env/
+.venv/
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo

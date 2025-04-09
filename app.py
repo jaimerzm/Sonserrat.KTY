@@ -1307,4 +1307,16 @@ if __name__ == '__main__':
             logger.info("Base de datos creada exitosamente")
         except Exception as e:
             logger.error(f"Error al crear la base de datos: {e}")
-    socketio.run(app, debug=True, host='127.0.0.1', port=5000)
+    
+    # Configuración para entorno de desarrollo y producción
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_ENV') == 'development'
+    
+    # En entorno local usamos socketio.run, en producción gunicorn maneja esto
+    if os.environ.get('RENDER') or os.environ.get('PRODUCTION'):
+        # En producción, gunicorn se encarga de ejecutar la app
+        app.logger.info(f"Ejecutando en modo producción en puerto {port}")
+    else:
+        # En desarrollo local
+        app.logger.info(f"Ejecutando en modo desarrollo en puerto {port}")
+        socketio.run(app, debug=debug, host='0.0.0.0', port=port)
