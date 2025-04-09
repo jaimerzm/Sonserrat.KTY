@@ -14,3 +14,4 @@ Pillow==10.0.1
 python-socketio==5.10.0
 bidict==0.22.1
 groq==0.20.0
+Authlib==1.2.1
