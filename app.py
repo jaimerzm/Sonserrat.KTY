@@ -18,6 +18,11 @@ import textwrap
 import mimetypes
 from groq import Groq
 
+ # Importar módulos para funcionalidades avanzadas
+from vector_db import init_vector_db, get_vector_db
+from conversation_summary import process_conversation_summary
+from search_api import search_web, format_search_results_for_llm
+
 # Configuración de logging
 logging.basicConfig(
     level=logging.DEBUG,
@@ -60,7 +65,7 @@ image_gen_model = None  # Modelo para generación/edición de imágenes
 
 def save_message_to_db(conversation_id, content, role):
     """
-    Guarda un mensaje en la base de datos.
+    Guarda un mensaje en la base de datos relacional y en la base de datos vectorial.
     
     Args:
         conversation_id: ID de la conversación
@@ -83,6 +88,22 @@ def save_message_to_db(conversation_id, content, role):
         db.session.add(message)
         db.session.commit()
         logger.debug(f"Mensaje guardado en DB - Conversación: {conversation_id}, Rol: {role}")
+        
+        # Guardar en la base de datos vectorial si está disponible
+        try:
+            vector_db = get_vector_db()
+            if vector_db:
+                vector_db.add_message(
+                    message_id=message.id,
+                    conversation_id=conversation_id,
+                    content=content,
+                    role=role,
+                    created_at=message.created_at
+                )
+                logger.debug(f"Mensaje {message.id} guardado en la base de datos vectorial")
+        except Exception as vector_error:
+            logger.error(f"Error guardando mensaje en la base de datos vectorial: {str(vector_error)}")
+            # Continuar aunque falle el guardado en la base de datos vectorial
         
     except Exception as e:
         logger.error(f"Error guardando mensaje en DB: {str(e)}")
@@ -113,9 +134,9 @@ try:
         safety_settings=safety_settings
     )
     
-    # Initialize chat instance
-    chat = model.start_chat(history=[])
-    logger.info("Google AI model y chat configurados exitosamente")
+    # No inicializar chat como variable global
+    # Cada conversación debe tener su propia instancia de chat
+    logger.info("Google AI model configurado exitosamente")
     logger.info("Google AI configurado exitosamente")
 except Exception as e:
     logger.error(f"Error configurando Google AI: {e}")
@@ -192,7 +213,24 @@ if not os.path.exists(instance_path):
 
 # Configuración básica
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24).hex())
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "db.sqlite")}'
+
+# Configuración de base de datos
+# En Render, usar PostgreSQL si DATABASE_URL está definido
+database_url = os.getenv('DATABASE_URL')
+is_render = os.environ.get('RENDER', False) or os.environ.get('RENDER_SERVICE_ID', False)
+
+if database_url and is_render:
+    # Render proporciona URLs de PostgreSQL que comienzan con postgres://
+    # SQLAlchemy 1.4+ requiere postgresql://
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    logger.info("Usando PostgreSQL en Render")
+else:
+    # En desarrollo local, usar SQLite
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "db.sqlite")}'
+    logger.info("Usando SQLite en desarrollo local")
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Configuración de sesiones y cookies
@@ -890,6 +928,136 @@ def handle_message(data):
                         'done': True
                     })
                     
+            # Verificar si el modo de búsqueda web está activado
+            elif data.get('webSearch', False) and user_message:
+                try:
+                    logger.info(f"Realizando búsqueda web para: {user_message}")
+                    
+                    # Realizar la búsqueda web
+                    search_results = search_web(user_message, search_provider="serper", num_results=5)
+                    
+                    # Formatear los resultados para el modelo
+                    search_context = format_search_results_for_llm(search_results)
+                    logger.info(f"Resultados de búsqueda obtenidos: {len(search_results.get('results', []))} resultados")
+                    
+                    # Crear un prompt enriquecido con los resultados de búsqueda
+                    enriched_prompt = f"""Basándote en los siguientes resultados de búsqueda web:
+
+{search_context}
+
+Responde a la siguiente consulta del usuario: {user_message}
+
+Utiliza la información de los resultados de búsqueda para proporcionar una respuesta precisa y actualizada. Cita las fuentes cuando sea apropiado."""
+                    
+                    # Determinar qué modelo usar para procesar la respuesta
+                    if model_type == 'groq' and groq_client:
+                        # Usar Groq para procesar la respuesta con streaming
+                        common_params = {
+                            "temperature": 0.7,
+                            "max_tokens": 2048,
+                            "top_p": 1,
+                            "stream": True,
+                            "stop": None
+                        }
+                        
+                        # Crear la solicitud a la API de Groq
+                        messages = [{"role": "user", "content": enriched_prompt}]
+                        completion = groq_client.chat.completions.create(
+                            model="llama-3.3-70b-versatile",
+                            messages=messages,
+                            **common_params
+                        )
+                        
+                        # Procesar la respuesta en streaming
+                        accumulated_response = ""
+                        buffer = ""
+                        buffer_size_threshold = 50
+                        
+                        for chunk in completion:
+                            if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                                chunk_content = chunk.choices[0].delta.content
+                                accumulated_response += chunk_content
+                                buffer += chunk_content
+                                
+                                if len(buffer) >= buffer_size_threshold:
+                                    emit('message_progress', {
+                                        'content': buffer,
+                                        'conversation_id': conversation_id
+                                    })
+                                    buffer = ""
+                        
+                        # Emitir respuesta final completa
+                        emit('message', {
+                            'role': 'assistant',
+                            'type': 'text',
+                            'content': accumulated_response,
+                            'done': True
+                        })
+                        
+                        # Guardar la respuesta del asistente
+                        save_message_to_db(conversation_id, accumulated_response, 'assistant')
+                    else:
+                        # Usar Gemini para procesar la respuesta con streaming
+                        # Crear una instancia de chat específica para esta conversación
+                        chat = model.start_chat()
+                        
+                        # Implementar streaming para Gemini
+                        response = chat.send_message(enriched_prompt, stream=True)
+                        
+                        # Procesar la respuesta en streaming
+                        accumulated_response = ""
+                        buffer = ""
+                        buffer_size_threshold = 50
+                        
+                        try:
+                            for chunk in response:
+                                if hasattr(chunk, 'text') and chunk.text:
+                                    chunk_content = chunk.text
+                                    accumulated_response += chunk_content
+                                    buffer += chunk_content
+                                    
+                                    if len(buffer) >= buffer_size_threshold:
+                                        emit('message_progress', {
+                                            'content': buffer,
+                                            'conversation_id': conversation_id
+                                        })
+                                        buffer = ""
+                            
+                            # Emitir cualquier contenido restante en el buffer
+                            if buffer:
+                                emit('message_progress', {
+                                    'content': buffer,
+                                    'conversation_id': conversation_id
+                                })
+                            
+                            # Emitir respuesta final completa
+                            emit('message', {
+                                'role': 'assistant',
+                                'type': 'text',
+                                'content': accumulated_response,
+                                'done': True
+                            })
+                            
+                            # Guardar la respuesta del asistente
+                            save_message_to_db(conversation_id, accumulated_response, 'assistant')
+                            
+                        except Exception as stream_error:
+                            logger.error(f"Error en streaming de Gemini con búsqueda web: {str(stream_error)}")
+                            error_msg = f"Error al procesar la respuesta con búsqueda web: {str(stream_error)}"
+                            emit('message', {
+                                'role': 'assistant',
+                                'content': error_msg,
+                                'done': True
+                            })
+                except Exception as search_error:
+                    logger.error(f"Error en búsqueda web: {str(search_error)}")
+                    error_msg = f"Error al realizar la búsqueda web: {str(search_error)}"
+                    emit('message', {
+                        'role': 'assistant',
+                        'content': error_msg,
+                        'done': True
+                    })
+            
             # Generate response based on model type
             elif model_type == 'gemini-flash':
                 # Generar imagen con Gemini 2.0 Flash
@@ -1083,21 +1251,96 @@ def handle_message(data):
                     if not user_message:
                         parts.append({"text": "Describe lo que ves en esta imagen"})
                 
-                response = chat.send_message(parts)
-                if hasattr(response, 'resolve'):
-                    response.resolve()
+                # Crear una instancia de chat específica para esta conversación
+                # Preparar el historial de la conversación para el modelo
+                chat_history = []
+                for msg in previous_messages:
+                    chat_history.append({"role": msg.role, "parts": [{"text": msg.content}]})
                 
-                # Extract only the response text
-                assistant_response = response.text
+                # Iniciar chat con historial específico de esta conversación
+                chat = model.start_chat(history=chat_history)
                 
-                # Emitir la respuesta
-                emit('message', {
-                    'role': 'assistant',
-                    'content': assistant_response
-                })
+                # Verificar si hay búsqueda web activada pero no se procesó en la sección anterior
+                # (esto puede ocurrir si hay imágenes adjuntas junto con la búsqueda web)
+                if data.get('webSearch', False) and user_message:
+                    try:
+                        # Realizar la búsqueda web
+                        search_results = search_web(user_message, search_provider="serper", num_results=5)
+                        
+                        # Formatear los resultados para el modelo
+                        search_context = format_search_results_for_llm(search_results)
+                        logger.info(f"Resultados de búsqueda obtenidos: {len(search_results.get('results', []))} resultados")
+                        
+                        # Añadir contexto de búsqueda al mensaje del usuario
+                        enriched_message = f"""Basándote en los siguientes resultados de búsqueda web:
+
+{search_context}
+
+Responde a la siguiente consulta del usuario: {user_message}
+
+Utiliza la información de los resultados de búsqueda para proporcionar una respuesta precisa y actualizada. Cita las fuentes cuando sea apropiado."""
+                        
+                        # Reemplazar las partes de texto con el mensaje enriquecido
+                        new_parts = []
+                        for part in parts:
+                            if part.get('text'):
+                                new_parts.append({"text": enriched_message})
+                            else:
+                                new_parts.append(part)
+                        parts = new_parts
+                    except Exception as search_error:
+                        logger.error(f"Error al enriquecer mensaje con búsqueda web: {str(search_error)}")
+                        # Continuar con el mensaje original si falla la búsqueda
                 
-                # Guardar la respuesta del asistente
-                save_message_to_db(conversation_id, assistant_response, 'assistant')
+                # Implementar streaming para Gemini
+                response = chat.send_message(parts, stream=True)
+                
+                # Procesar la respuesta en streaming
+                accumulated_response = ""
+                buffer = ""
+                buffer_size_threshold = 50  # Enviar actualizaciones cada 50 caracteres
+                
+                try:
+                    for chunk in response:
+                        if hasattr(chunk, 'text') and chunk.text:
+                            chunk_content = chunk.text
+                            accumulated_response += chunk_content
+                            buffer += chunk_content
+                            
+                            # Solo emitir actualizaciones de progreso cuando el buffer alcance cierto tamaño
+                            if len(buffer) >= buffer_size_threshold:
+                                emit('message_progress', {
+                                    'content': buffer,
+                                    'conversation_id': conversation_id
+                                })
+                                buffer = ""
+                    
+                    # Emitir cualquier contenido restante en el buffer
+                    if buffer:
+                        emit('message_progress', {
+                            'content': buffer,
+                            'conversation_id': conversation_id
+                        })
+                    
+                    # Emitir respuesta final completa
+                    emit('message', {
+                        'role': 'assistant',
+                        'type': 'text',
+                        'content': accumulated_response,
+                        'done': True
+                    })
+                    
+                    # Guardar la respuesta del asistente
+                    save_message_to_db(conversation_id, accumulated_response, 'assistant')
+                    
+                except Exception as stream_error:
+                    logger.error(f"Error en streaming de Gemini: {str(stream_error)}")
+                    error_msg = f"Error al procesar la respuesta: {str(stream_error)}"
+                    emit('message', {
+                        'role': 'assistant',
+                        'content': error_msg,
+                        'done': True
+                    })
                     
         except Exception as api_error:
             logger.error(f"Error al generar respuesta: {str(api_error)}")
@@ -1226,6 +1469,7 @@ def web_search():
         data = request.get_json()
         query = data.get('query', '')
         session_id = data.get('session_id', 'default')
+        search_provider = data.get('provider', 'serper')  # Por defecto usar Serper
 
         if not query:
             return jsonify({
@@ -1233,7 +1477,19 @@ def web_search():
                 'status': 'error'
             }), 400
 
-        try:
+        # Realizar búsqueda web con la API real
+        search_results = search_web(query, search_provider=search_provider)
+        
+        # Si hay un error en la búsqueda, intentar con el método alternativo
+        if 'error' in search_results and not search_results['results']:
+            logger.warning(f"Error en búsqueda con {search_provider}: {search_results['error']}")
+            # Intentar con el método alternativo
+            alt_provider = 'google' if search_provider == 'serper' else 'serper'
+            search_results = search_web(query, search_provider=alt_provider)
+        
+        # Si aún hay error o no hay resultados, usar el método de respuesta simulada
+        if 'error' in search_results and not search_results['results']:
+            logger.warning("Fallback a respuesta simulada de búsqueda")
             response = model.generate_content(
                 f"""Actúa como un asistente de búsqueda web experto. 
                 Busca información sobre: {query}

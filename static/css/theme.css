@@ -1,0 +1,147 @@
+:root {
+    /* Variables para el modo claro (predeterminado) */
+    --accent-color: #2c3e50;  /* Azul marino profesional */
+    --accent-hover: #34495e;  /* Versión más clara para hover */
+    --text-primary: #2c3e50;
+    --text-secondary: #64748b;
+    --border-color: #e2e8f0;
+    --background-color: #ffffff;
+    --chat-bg: #f8fafc;
+    --sidebar-bg: #f1f5f9;
+    --error-color: #ef4444;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --input-bg: #ffffff;
+    --message-user-bg: #e9f2ff;
+    --message-assistant-bg: #f8f9fa;
+    --button-text: #ffffff;
+    --modal-bg: #ffffff;
+    --dropdown-bg: #ffffff;
+    --dropdown-hover: #f1f5f9;
+    --auth-box-bg: #ffffff;
+    --auth-input-bg: #ffffff;
+}
+
+/* Modo oscuro */
+[data-theme="dark"] {
+    --accent-color: #3498db;  /* Azul más brillante para el modo oscuro */
+    --accent-hover: #2980b9;  /* Versión más oscura para hover */
+    --text-primary: #e2e8f0;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+    --background-color: #1a1a2e;
+    --chat-bg: #121225;
+    --sidebar-bg: #0f0f1a;
+    --error-color: #f87171;
+    --shadow-color: rgba(0, 0, 0, 0.3);
+    --input-bg: #1e1e30;
+    --message-user-bg: #1e3a5f;
+    --message-assistant-bg: #1e1e30;
+    --button-text: #ffffff;
+    --modal-bg: #1a1a2e;
+    --dropdown-bg: #1e1e30;
+    --dropdown-hover: #2d2d3a;
+    --auth-box-bg: #1a1a2e;
+    --auth-input-bg: #1e1e30;
+}
+
+/* Estilos para el botón de cambio de tema */
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: background-color 0.2s, color 0.2s;
+    position: relative;
+}
+
+.theme-toggle:hover {
+    background-color: rgba(128, 128, 128, 0.1);
+    transform: scale(1.05);
+}
+
+.theme-toggle:active {
+    transform: scale(0.95);
+}
+
+.theme-toggle i {
+    font-size: 1.2rem;
+}
+
+/* Indicador de modo actual */
+.theme-toggle::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--accent-color);
+    transition: all 0.3s ease;
+    opacity: 0.8;
+}
+
+/* Transición suave para cambios de tema */
+body {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+* {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Estilos para la notificación de cambio de tema */
+.theme-notification {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Estilos para el indicador de tema del sistema */
+.system-theme-indicator {
+    background-color: var(--accent-color);
+    color: white;
+    padding: 1px 4px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+/* Correcciones de contraste para modo oscuro */
+[data-theme="dark"] .user-info {
+    background: var(--input-bg);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .user-menu:hover {
+    background: var(--dropdown-hover);
+}
+
+[data-theme="dark"] .chat-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .chat-item .star-btn:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="dark"] .user-dropdown {
+    background: var(--dropdown-bg);
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .logout-option {
+    color: #ff6b6b;
+}
+
+[data-theme="dark"] .logout-option i {
+    color: #ff6b6b;
+}
+
+[data-theme="dark"] .logout-option:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}

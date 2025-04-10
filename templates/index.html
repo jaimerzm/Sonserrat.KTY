@@ -4,12 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sonserrat.KTY</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/model-selector.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/markdown-styles.css') }}">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="{{ url_for('static', filename='js/marked.min.js') }}"></script>
 </head>
 <body>
     <div class="app-container">
@@ -68,6 +71,9 @@
                     </div>
                 </div>
                 <div class="header-actions">
+                    <button id="theme-toggle" class="theme-toggle action-button" title="Cambiar tema">
+                        <i id="theme-icon" class="fas fa-moon"></i>
+                    </button>
                     <a href="/logout" class="logout-button-discrete">
                         <i class="fas fa-sign-out-alt"></i>
                     </a>
@@ -140,5 +146,9 @@
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script src="{{ url_for('static', filename='js/user-dropdown.js') }}"></script>
     <script src="{{ url_for('static', filename='js/mobile-menu.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/guest-login-modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/markdown-renderer.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/clipboard.js') }}"></script>
 </body>
 </html>

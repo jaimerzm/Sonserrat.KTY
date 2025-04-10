@@ -123,9 +123,9 @@ def login_google():
             client_kwargs={'scope': 'email profile'},
         )
     
-    # Generar URL de redirección
-    # Usar una URL de redirección fija que coincida exactamente con la configurada en Google Cloud Console
-    redirect_uri = "http://localhost:5000/login/google/callback"
+    # Generar URL de redirección dinámica que funcione tanto en desarrollo como en producción
+    # Esto generará la URL correcta basada en el entorno actual
+    redirect_uri = url_for('auth.google_callback', _external=True)
     return oauth.google.authorize_redirect(redirect_uri)
 
 @auth.route('/login/google/callback')

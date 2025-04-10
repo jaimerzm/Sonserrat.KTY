@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iniciar Sesión - Sonserrat.KTY</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/auth-modern.css') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -17,9 +18,12 @@
     </div>
     <div class="auth-container">
         <div class="auth-box">
-            <div class="auth-header">
+            <div class="auth-header" style="position: relative;">
                 <i class="fas fa-brain auth-icon"></i>
                 <h1>Sonserrat.KTY</h1>
+                <button id="theme-toggle" class="theme-toggle action-button" style="position: absolute; top: 20px; right: 20px;" title="Cambiar tema">
+                    <i id="theme-icon" class="fas fa-moon"></i>
+                </button>
             </div>
             {% with messages = get_flashed_messages() %}
             {% if messages %}
@@ -92,5 +96,6 @@
         </div>
     </div>
     <script src="{{ url_for('static', filename='js/guest-login-modal.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/theme-toggle.js') }}"></script>
 </body>
 </html>

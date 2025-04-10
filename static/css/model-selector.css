@@ -2,11 +2,11 @@
     position: absolute;
     top: 100%;
     left: 0; /* Cambiado de right: 0 a left: 0 para corregir el posicionamiento */
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 25px var(--shadow-color);
     margin-top: 0.5rem;
     padding: 1rem;
     opacity: 0;
@@ -27,23 +27,23 @@
     padding: 0.8rem 1rem;
     margin-bottom: 0.5rem;
     border-radius: 10px;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    background: white;
+    border: 1px solid var(--border-color);
+    background: var(--dropdown-bg);
     cursor: pointer;
     transition: all 0.2s ease;
 }
 
 .model-option:hover {
-    background-color: #f8f9fa;
+    background-color: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .model-option.active {
-    background-color: #f0f7ff;
-    border-color: #2196f3;
+    background-color: var(--message-user-bg);
+    border-color: var(--accent-color);
     transform: scale(1.02);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: 0 4px 12px var(--shadow-color);
 }
 
 .model-icon-container {
@@ -79,21 +79,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -116,21 +117,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -153,21 +155,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -190,21 +193,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -227,21 +231,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -264,21 +269,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -301,21 +307,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -338,21 +345,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -375,21 +383,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -412,21 +421,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -449,21 +459,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -486,21 +497,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -523,21 +535,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -560,21 +573,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -597,21 +611,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -634,21 +649,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -671,21 +687,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -708,21 +725,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -745,21 +763,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -782,21 +801,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -819,21 +839,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -856,21 +877,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -893,21 +915,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -930,21 +953,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -967,21 +991,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1004,21 +1029,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1041,21 +1067,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1078,21 +1105,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1115,21 +1143,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1152,21 +1181,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1189,21 +1219,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1226,21 +1257,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1263,21 +1295,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1300,21 +1333,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1337,21 +1371,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1374,21 +1409,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1411,21 +1447,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1448,21 +1485,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1485,21 +1523,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1522,21 +1561,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1559,21 +1599,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1596,21 +1637,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1633,21 +1675,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1670,21 +1713,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1707,21 +1751,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1744,21 +1789,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {
@@ -1781,21 +1827,22 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--dropdown-bg);
     backdrop-filter: blur(10px);
     padding: 0.8rem 1.2rem;
     border-radius: 12px;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     min-width: 220px; /* Increased minimum width */
+    color: var(--text-primary);
 }
 
 .model-selector-container:hover {
-    background: rgba(255, 255, 255, 0.98);
+    background: var(--dropdown-hover);
     transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 8px 25px var(--shadow-color);
 }
 
 .model-floating-menu.active {

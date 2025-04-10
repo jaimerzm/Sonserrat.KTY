@@ -3,6 +3,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const modelNameElements = document.querySelectorAll('#model-name');
     const modelSelectorContainer = document.querySelector('.model-selector-container');
     
+    // Función para detectar cambios en el tema y actualizar el selector de modelos
+    function observeThemeChanges() {
+        // Crear un observador para detectar cambios en el atributo data-theme del documento
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'data-theme') {
+                    const currentTheme = document.documentElement.getAttribute('data-theme');
+                    console.log('Tema cambiado en selector de modelos:', currentTheme);
+                    
+                    // Actualizar el menú flotante si está visible
+                    const menu = document.querySelector('.model-floating-menu');
+                    if (menu) {
+                        // Las variables CSS se actualizan automáticamente
+                        // Solo necesitamos forzar una actualización si hay estilos inline
+                        updateActiveState();
+                    }
+                }
+            });
+        });
+        
+        // Observar cambios en el atributo data-theme del elemento html
+        observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    }
+    
+    // Iniciar la observación de cambios de tema
+    observeThemeChanges();
+    
     // Create model options with enhanced visual feedback
     const models = [
         { value: 'gemini', name: 'Chat.KTY (VISION)', icon: 'fa-brain', color: '#4285f4' },

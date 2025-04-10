@@ -15,4 +15,7 @@ python-socketio==5.10.0
 bidict==0.22.1
 groq==0.20.0
 Authlib==1.2.1
-eventlet==0.33.3
+# Nuevas dependencias para funcionalidades avanzadas
+chromadb==0.4.18
+sentence-transformers==2.2.2
+requests==2.31.0
