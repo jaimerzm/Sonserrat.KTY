@@ -5,6 +5,7 @@ import gc
 import time
 import threading
 from app import app, socketio
+from whitenoise import WhiteNoise
 
 # Configuración de logging
 logging.basicConfig(
@@ -42,6 +43,11 @@ if is_render:
 def create_app():
     """Crea y configura la aplicación"""
     logger.info("Iniciando aplicación con configuración optimizada")
+    # Envolver la aplicación con WhiteNoise para servir archivos estáticos
+    # Usar el directorio 'static' relativo a la ubicación de app.py
+    static_folder_root = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+    app.wsgi_app = WhiteNoise(app.wsgi_app, root=static_folder_root, prefix='static/')
+    logger.info(f"WhiteNoise configurado para servir archivos desde: {static_folder_root}")
     return app
 
 # Punto de entrada para Gunicorn

@@ -124,8 +124,16 @@ def login_google():
         )
     
     # Generar URL de redirección
-    # Usar una URL de redirección fija que coincida exactamente con la configurada en Google Cloud Console
-    redirect_uri = "http://localhost:5000/login/google/callback"
+    # Usar una variable de entorno para la URI de redirección
+    redirect_uri = os.getenv('GOOGLE_REDIRECT_URI')
+    if not redirect_uri:
+        # Fallback para desarrollo local si no está configurada la variable de entorno
+        redirect_uri = url_for('auth.google_callback', _external=True)
+        # Asegurarse de que sea http en localhost si no hay https
+        if 'localhost' in redirect_uri and not redirect_uri.startswith('https'):
+            redirect_uri = redirect_uri.replace('https://', 'http://')
+        current_app.logger.warning(f"GOOGLE_REDIRECT_URI no configurada, usando fallback: {redirect_uri}")
+
     return oauth.google.authorize_redirect(redirect_uri)
 
 @auth.route('/login/google/callback')

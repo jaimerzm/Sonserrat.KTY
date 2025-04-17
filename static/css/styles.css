@@ -339,6 +339,8 @@ body {
     background-color: var(--chat-bg);
     width: 100%; /* Ensure it takes full width */
     max-width: 100%;
+    position: relative; /* Establish stacking context */
+    z-index: 1; /* Base z-index for this context */
 }
 
 .chat-header {
@@ -349,6 +351,8 @@ body {
     justify-content: space-between;
     align-items: center;
     width: 100%;
+    position: relative; /* Needed for z-index */
+    z-index: 10; /* Ensure header is above chat messages within main-content */
 }
 
 .chat-title {

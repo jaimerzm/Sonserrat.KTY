@@ -17,7 +17,6 @@ import pathlib
 import textwrap
 import mimetypes
 from groq import Groq
-from werkzeug.middleware.proxy_fix import ProxyFix # Added import
 
 # Configuración de logging
 logging.basicConfig(
@@ -183,9 +182,6 @@ def process_image(file):
         return None
 
 app = Flask(__name__)
-# Aplicar ProxyFix para manejar encabezados X-Forwarded* de Render
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
-
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE  # 20MB max-limit
 
@@ -196,7 +192,18 @@ if not os.path.exists(instance_path):
 
 # Configuración básica
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', os.urandom(24).hex())
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "db.sqlite")}'
+
+# Configuración de la base de datos: usa DATABASE_URL si está disponible (Render), si no, usa SQLite local
+database_url = os.getenv('DATABASE_URL')
+if database_url and database_url.startswith('postgres://'):
+    # Asegurarse de que la URL de Heroku/Render sea compatible con SQLAlchemy 1.4+
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    logger.info("Usando base de datos PostgreSQL de Render")
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "db.sqlite")}'
+    logger.info("DATABASE_URL no encontrada o no es PostgreSQL, usando SQLite local")
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Configuración de sesiones y cookies

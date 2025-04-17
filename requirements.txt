@@ -15,4 +15,4 @@ python-socketio==5.10.0
 bidict==0.22.1
 groq==0.20.0
 Authlib==1.2.1
-eventlet==0.33.3
+whitenoise[brotli]==6.6.0
