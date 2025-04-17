@@ -67,28 +67,19 @@ La aplicación está lista para ser desplegada en Render.com. Los archivos de co
 ### Pasos para desplegar en Render.com
 
 1. Crea una cuenta en [Render.com](https://render.com) si aún no tienes una.
-2. **PRIMERO**: Crea un servicio de base de datos PostgreSQL:
-   - Ve a Dashboard > New > PostgreSQL
-   - Configura un nombre para tu base de datos
-   - Selecciona el plan gratuito
-   - Haz clic en "Create Database"
-   - Espera a que se aprovisione la base de datos (puede tardar unos minutos)
-   - Guarda la "Internal Database URL" que aparece en el panel
-3. Haz clic en "New" y selecciona "Web Service".
-4. Conecta tu repositorio de GitHub o sube el código directamente.
-5. Configura el servicio con los siguientes ajustes:
+2. Haz clic en "New" y selecciona "Web Service".
+3. Conecta tu repositorio de GitHub o sube el código directamente.
+4. Configura el servicio con los siguientes ajustes:
    - **Name**: Nombre de tu aplicación
    - **Runtime**: Python
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `gunicorn -c gunicorn_config.py wsgi:app`
-   - **Plan**: Selecciona el plan gratuito (Free) que incluye 512MB de RAM
-6. En la sección "Environment Variables", añade las siguientes variables:
+5. En la sección "Environment Variables", añade las siguientes variables:
    - `GOOGLE_API_KEY`: Tu clave de API de Google Gemini
    - `GROQ_API_KEY`: Tu clave de API de Groq
    - `SECRET_KEY`: Una clave secreta para Flask
    - `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`: Para autenticación con Google
    - `RENDER=true`: Para indicar que está en entorno de producción
-   - `DATABASE_URL`: **OBLIGATORIO** - Pega aquí la URL interna de PostgreSQL del paso 2
 
 ## Estructura del proyecto
 
@@ -122,25 +113,9 @@ La aplicación está lista para ser desplegada en Render.com. Los archivos de co
 - La aplicación está configurada para detectar automáticamente si está ejecutándose en Render.com
 - En producción, Render gestionará el servidor Gunicorn según la configuración del Procfile
 - El directorio `uploads/` debe tener permisos de escritura para almacenar imágenes generadas
-
-### Configuración de PostgreSQL (OBLIGATORIO para producción)
-
-SQLite no es adecuado para entornos de producción con múltiples workers. Para un funcionamiento correcto en Render:
-
-1. Crea un servicio de base de datos PostgreSQL en Render:
-   - Ve a Dashboard > New > PostgreSQL
-   - Configura un nombre y selecciona el plan gratuito
-   - Espera a que se aprovisione la base de datos
-
-2. Obtén la URL interna de conexión desde el panel de la base de datos
-
-3. Añade esta URL como variable de entorno `DATABASE_URL` en tu servicio web
-
-### Optimizaciones de memoria para Render Free Tier (512MB)
-
-- La aplicación está configurada para limitar el uso de memoria a 480MB para evitar que Render mate los procesos
-- Se utilizan mecanismos de recolección de basura periódica para mantener el uso de memoria bajo control
-- El parámetro `max_requests` está configurado para reiniciar los workers después de procesar 200 solicitudes
+- Si necesitas una base de datos más robusta, considera usar PostgreSQL en lugar de SQLite:
+  1. Crea un servicio de base de datos PostgreSQL en Render
+  2. Actualiza la variable de entorno `DATABASE_URL` con la URL proporcionada por Render
 
 ## Licencia
 

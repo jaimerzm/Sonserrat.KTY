@@ -47,6 +47,6 @@ def pre_fork(server, worker):
 def post_fork(server, worker):
     # Configuración después de iniciar un worker
     import resource
-    # Limitar el uso de memoria a 480MB (plan gratuito de Render tiene 512MB)
-    # 480MB en bytes = 480 * 1024 * 1024
-    resource.setrlimit(resource.RLIMIT_AS, (480 * 1024 * 1024, 500 * 1024 * 1024))
+    # Limitar el uso de memoria a 450MB (plan gratuito de Render tiene 512MB)
+    # 450MB en bytes = 450 * 1024 * 1024
+    resource.setrlimit(resource.RLIMIT_AS, (450 * 1024 * 1024, 500 * 1024 * 1024))
