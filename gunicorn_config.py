@@ -1,45 +1,52 @@
-# gunicorn_config.py
-import os
-import resource
+# Configuración optimizada de Gunicorn para entornos con recursos limitados (Render Free Tier)
 
-workers = 1
-worker_class = 'geventwebsocket.gunicorn.workers.GeventWebSocketWorker'
-timeout = 120
-keepalive = 5
-threads = 1
+# Configuración de workers
+workers = 1  # Mantener un solo worker en el plan gratuito de Render
+worker_class = 'geventwebsocket.gunicorn.workers.GeventWebSocketWorker'  # Necesario para WebSockets
 
-# Reiniciar después de X requests para liberar memoria
-max_requests = 200
-max_requests_jitter = 50
+# Timeouts optimizados
+timeout = 120  # Aumentar el timeout para evitar WORKER TIMEOUT
+keepalive = 5  # Mantener conexiones abiertas por 5 segundos
 
-accesslog = '-'
-errorlog = '-'
-loglevel = 'info'
+# Configuración de memoria
+max_requests = 200  # Reiniciar workers después de procesar este número de solicitudes
+max_requests_jitter = 50  # Añadir variabilidad para evitar que todos los workers se reinicien a la vez
 
-preload_app = True
-forwarded_allow_ips = '*'
+# Configuración de carga
+worker_connections = 500  # Limitar el número de conexiones simultáneas por worker
 
+# Configuración de logging
+accesslog = '-'  # Enviar logs de acceso a stdout
+errorlog = '-'  # Enviar logs de error a stdout
+loglevel = 'info'  # Nivel de logging
+
+# Configuración de rendimiento
+preload_app = True  # Cargar la aplicación antes de iniciar los workers
+
+# Configuración de buffer
+forwarded_allow_ips = '*'  # Permitir X-Forwarded-For desde cualquier IP
+
+# Configuración de seguridad
 secure_scheme_headers = {
     'X-FORWARDED-PROTOCOL': 'ssl',
     'X-FORWARDED-PROTO': 'https',
     'X-FORWARDED-SSL': 'on'
 }
 
+# Configuración de gevent específica
+gevent_monkey_patch = True  # Aplicar monkey patching de gevent
+
+# Configuración para limitar el uso de memoria
+threads = 1  # Usar un solo hilo por worker para reducir el uso de memoria
+
+# Función para limitar el uso de memoria por worker
 def pre_fork(server, worker):
+    # Configuración antes de iniciar un worker
     pass
 
 def post_fork(server, worker):
-    # Limitar el uso de memoria a 450MB (soft limit) y 500MB (hard limit)
-    # Solo intentar establecer límites si el módulo resource está disponible (no en Windows)
-    try:
-        resource.setrlimit(resource.RLIMIT_AS, (450 * 1024 * 1024, 500 * 1024 * 1024))
-        server.log.info(f"Límite de memoria establecido para worker {worker.pid}: 450MB (soft), 500MB (hard)")
-    except (ImportError, AttributeError, ValueError, OSError) as e:
-        # ImportError/AttributeError si resource no está disponible (Windows)
-        # ValueError si los límites son inválidos
-        # OSError si el sistema no permite setrlimit
-        server.log.warning(f"No se pudo establecer el límite de memoria para worker {worker.pid}: {e}")
-
-# El bind se configura automáticamente por Render a través de la variable PORT
-# No es necesario definir 'bind' aquí si Render lo gestiona.
-# bind = '0.0.0.0:' + os.getenv('PORT', '10000') # Comentado, Render lo maneja
+    # Configuración después de iniciar un worker
+    import resource
+    # Limitar el uso de memoria a 450MB (plan gratuito de Render tiene 512MB)
+    # 450MB en bytes = 450 * 1024 * 1024
+    resource.setrlimit(resource.RLIMIT_AS, (450 * 1024 * 1024, 500 * 1024 * 1024))

@@ -904,10 +904,8 @@ def handle_chat_post():
     # It starts the generation process and returns an initial JSON response.
     # The actual result will be sent via Socket.IO.
     try:
-        user_id = current_user.id # Get user_id early for logging
         user_message = request.form.get('message', '').strip()
         conversation_id_str = request.form.get('conversation_id')
-        logger.debug(f"handle_chat_post: Received conversation_id_str = '{conversation_id_str}' (type: {type(conversation_id_str)})", extra={'user_id': user_id}) # LOG 1
         model_type = request.form.get('model', 'gemini')
         files = request.files.getlist('attachments') # Use request.files for FormData
         is_web_search = request.form.get('web_search', 'false').lower() == 'true'
@@ -921,50 +919,29 @@ def handle_chat_post():
 
         # --- Get or Create Conversation --- 
         conversation_id = None
-        conversation = None
-        is_new_conversation = False # Keep track if we created a new one
-
-        # Check if conversation_id_str is a valid identifier (not None, 'null', 'undefined', or empty string)
-        condition_check = bool(conversation_id_str and conversation_id_str.lower() not in ['null', 'undefined', ''])
-        logger.debug(f"handle_chat_post: Condition to use existing ID = {condition_check}", extra={'user_id': user_id}) # LOG 2
-
-        if condition_check:
-            # Attempt to use the provided conversation_id_str
+        if not conversation_id_str or conversation_id_str.lower() == 'null' or conversation_id_str == 'undefined':
+            conversation = Conversation(user_id=current_user.id, model_name=model_type, title="Nueva Conversación")
+            db.session.add(conversation)
+            db.session.commit()
+            conversation_id = conversation.id
+            logger.info(f"Created new conversation via POST: {conversation_id}")
+            # Emit new conversation info immediately if created here
+            socketio.emit('conversation_update', {
+                'id': conversation.id,
+                'title': conversation.title,
+                'starred': conversation.starred,
+                'created_at': conversation.created_at.isoformat()
+            }, room=sid) # Emit to specific user if SID is known
+        else:
             try:
                 conversation_id = int(conversation_id_str)
                 conversation = db.session.get(Conversation, conversation_id)
-                if conversation and conversation.user_id == user_id:
-                    logger.debug(f"handle_chat_post: Found existing conversation {conversation_id}", extra={'user_id': user_id}) # LOG 3a
-                else:
-                    # ID is valid format, but not found or doesn't belong to user
-                    logger.warning(f"handle_chat_post: Received valid ID '{conversation_id_str}' but conversation not found in DB or doesn't belong to user {user_id}! Treating as error.", extra={'user_id': user_id}) # LOG 3b
-                    # Return error instead of creating a new one silently
+                if not conversation or conversation.user_id != current_user.id:
+                    logger.error(f"Invalid or unauthorized conversation ID: {conversation_id}")
                     return jsonify({'status': 'error', 'message': 'Conversación inválida o no autorizada'}), 403
             except ValueError:
-                 logger.error(f"Invalid conversation ID format: {conversation_id_str}. Treating as error.", extra={'user_id': user_id})
+                 logger.error(f"Invalid conversation ID format: {conversation_id_str}")
                  return jsonify({'status': 'error', 'message': 'ID de conversación inválido'}), 400
-            except Exception as e_get_conv:
-                 logger.error(f"Error retrieving conversation {conversation_id_str}: {e_get_conv}", extra={'user_id': user_id})
-                 return jsonify({'status': 'error', 'message': 'Error al recuperar la conversación'}), 500
-        else:
-            # ID is missing or invalid, create a new conversation
-            logger.info(f"handle_chat_post: Creating new conversation because ID was '{conversation_id_str}'", extra={'user_id': user_id}) # LOG 4
-            is_new_conversation = True
-            conversation = Conversation(user_id=user_id, model_name=model_type, title="Nueva Conversación")
-            db.session.add(conversation)
-            db.session.flush() # Flush to get the ID before using it
-            conversation_id = conversation.id
-            logger.info(f"handle_chat_post: New conversation created with ID {conversation_id}", extra={'user_id': user_id})
-            # Emit new conversation info immediately if created here
-            if sid:
-                socketio.emit('conversation_update', {
-                    'id': conversation.id,
-                    'title': conversation.title,
-                    'starred': conversation.starred,
-                    'created_at': conversation.created_at.isoformat() if conversation.created_at else None # Handle potential None
-                }, room=sid)
-            else:
-                logger.warning(f"handle_chat_post: Cannot emit conversation_update, SID is missing for user {user_id}")
 
         # --- Process Attachments (Images) --- 
         processed_images = []
@@ -1124,74 +1101,9 @@ def generate_response_task(conversation_id, user_message, processed_images, mode
                 return # End task after video logic
 
             # --- Other Model Logic (Gemini, Groq, Image Gen, Web Search etc.) ---
+            # Get conversation history (only needed for models that use it)
+            previous_messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
             
-            # --- Get Conversation History ---
-            # Recuperar todos los mensajes ordenados
-            all_messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at.asc()).all()
-
-            # Crear el historial para el modelo excluyendo el último mensaje SI es del usuario
-            # Esto asume que el mensaje del usuario se guardó JUSTO ANTES de llamar a esta tarea.
-            history_for_model = []
-            if all_messages:
-                if len(all_messages) > 1 and all_messages[-1].role == 'user':
-                    # Si hay más de un mensaje y el último es del usuario, exclúyelo
-                    history_for_model = all_messages[:-1]
-                    logger.debug(f"Historial para modelo (Conv {conversation_id}): Excluyendo el último mensaje de usuario. Total histórico: {len(history_for_model)}.")
-                elif len(all_messages) == 1 and all_messages[0].role == 'user':
-                    # Si solo hay un mensaje y es del usuario, el historial para el modelo está vacío
-                    history_for_model = []
-                    logger.debug(f"Historial para modelo (Conv {conversation_id}): Vacío (solo existe el mensaje inicial del usuario).")
-                else:
-                    # Si el último mensaje no es del usuario (raro) o solo hay un mensaje del asistente, usar todo
-                    history_for_model = all_messages
-                    logger.debug(f"Historial para modelo (Conv {conversation_id}): Usando todos los {len(history_for_model)} mensajes.")
-            else:
-                 logger.debug(f"Historial para modelo (Conv {conversation_id}): Vacío (la conversación no tenía mensajes previos).")
-
-
-            # --- Preparar el historial para los formatos específicos de cada API ---
-
-            # Para Gemini (lista de diccionarios con roles 'user'/'model' y parts)
-            contents_for_gemini = []
-            for msg in history_for_model:
-                role = 'model' if msg.role == 'assistant' else 'user'
-                # Asumiendo que el historial es texto. Si pudiera contener marcadores de imagen/video, necesitaría más lógica aquí.
-                parts = [{"text": msg.content}]
-                contents_for_gemini.append({"role": role, "parts": parts})
-            # Añadir mensaje actual del usuario y sus imágenes (como se hacía antes)
-            current_user_parts = []
-            if user_message: current_user_parts.append({"text": user_message})
-            if processed_images:
-                 for img_b64 in processed_images:
-                     try:
-                         # La API de Gemini (dependiendo de la versión/método) puede aceptar bytes decodificados o base64
-                         # Para generate_content, a menudo espera datos decodificados o objetos PIL.
-                         # ¡Asegúrate que get_gemini_pro_response maneje esto correctamente!
-                         # Aquí pasamos base64 como estaba antes, asumiendo que get_gemini_pro_response lo decodifica si es necesario.
-                         current_user_parts.append({
-                             "inline_data": {
-                                 "mime_type": img_b64['mime_type'],
-                                 "data": img_b64['data'] # Pasar base64
-                             }
-                         })
-                     except Exception as img_err:
-                         logger.error(f"Error preparando imagen adjunta para Gemini: {img_err}")
-                         current_user_parts.append({"text": "[Error al procesar imagen adjunta]"})
-                 if not user_message: current_user_parts.append({"text": "Describe la(s) imagen(es)."})
-            # Adjuntar partes del mensaje actual al historial estructurado para Gemini
-            if current_user_parts:
-                 contents_for_gemini.append({"role": "user", "parts": current_user_parts})
-
-            # Para Groq (lista simple de diccionarios role/content)
-            conversation_history_for_groq = []
-            for msg in history_for_model:
-                 role = msg.role if msg.role in ['user', 'assistant'] else 'user'
-                 conversation_history_for_groq.append({"role": role, "content": msg.content})
-            # Añadir mensaje actual del usuario (y nota sobre imágenes si aplica)
-            user_content_for_groq = user_message
-            if processed_images:
-                user_content_for_groq += f"\n\n[Nota del sistema: El usuario adjuntó {len(processed_images)} imagen(es).]"
-
             assistant_response = ""
             is_streaming = False
             try:
@@ -1202,8 +1114,7 @@ def generate_response_task(conversation_id, user_message, processed_images, mode
                          # Ensure 'model' is the correct Gemini model instance configured for text
                          if not model:
                              raise Exception("Gemini text model not initialized.")
-                         # Use the prepared history for Gemini
-                         response = model.generate_content(contents_for_gemini + [{"role": "user", "parts": [{"text": search_prompt}] }]) # Append search prompt as user turn
+                         response = model.generate_content(search_prompt)
                          assistant_response = response.text
                      except Exception as search_err:
                          logger.error(f"Error during web search generation: {search_err}")
@@ -1212,15 +1123,27 @@ def generate_response_task(conversation_id, user_message, processed_images, mode
                 elif model_type == 'gemini':
                     if not model:
                          raise Exception("Gemini model not initialized.")
-                    # Use the prepared history and current message parts for Gemini
-                    assistant_response = get_gemini_response(contents_for_gemini) # Pass the prepared list
+                    # Adapt get_gemini_response if needed, ensure it handles base64 images
+                    assistant_response = get_gemini_response(previous_messages, user_message, images=processed_images)
                 
                 elif model_type == 'groq':
                     if not groq_client:
                         raise Exception("Groq API key not configured.")
                     is_streaming = True # Groq uses streaming
                     
-                    # Prepare messages for Groq using the refined history and current message
+                    # Prepare messages for Groq
+                    conversation_history_for_groq = []
+                    for msg in previous_messages:
+                         # Ensure history format is correct for Groq
+                         role = msg.role if msg.role in ['user', 'assistant'] else 'user' # Default unknown roles to user
+                         conversation_history_for_groq.append({"role": role, "content": msg.content})
+
+                    user_content_for_groq = user_message
+                    if processed_images:
+                         # Check if a vision model is available and selected for Groq
+                         # For now, assume text model and add note
+                         user_content_for_groq += "\n[Nota: El usuario adjuntó imágenes. No puedo verlas directamente.]" 
+                    
                     messages_for_groq = conversation_history_for_groq + [{"role": "user", "content": user_content_for_groq}]
                     
                     # Select appropriate Groq model
@@ -1339,13 +1262,9 @@ def handle_socket_message(data):
                 conversation.user_id = current_user.id
             conversation.model_name = model_type
             conversation.title = "Nueva Conversación"
-            logger.info(f"handle_chat_post: Creating new conversation because ID was '{conversation_id_str}'", extra={'user_id': user_id}) # LOG 4
-            is_new_conversation = True
             db.session.add(conversation)
-            # db.session.commit() # Commit later after message saving
-            db.session.flush() # Flush to get the ID
+            db.session.commit()
             conversation_id = conversation.id
-            logger.info(f"handle_chat_post: New conversation created with ID {conversation_id}", extra={'user_id': user_id})
             logger.debug(f"Creada nueva conversación con ID: {conversation_id}")
         
         logger.debug(f"Recibido mensaje - ID: {conversation_id}, Texto: {user_message}, Archivos: {len(files)}, Modelo: {model_type}, Es edición de imagen: {is_image_edit}")
