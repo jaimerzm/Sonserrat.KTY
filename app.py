@@ -8,7 +8,7 @@ import os
 import time
 import logging
 import json
-from models import db, User, Conversation, Message
+from models import db, User, Conversation, Message, GeneratedVideo # <-- Añadir GeneratedVideo
 from auth import auth as auth_blueprint, oauth
 import PIL.Image
 import io
@@ -126,14 +126,13 @@ try:
         logger.error(f"Error configurando modelo de generación de imágenes: {e}")
         image_gen_model = None
 
-    # Cliente de Google AI (necesario para Veo 2) - Comentado temporalmente
-    # try:
-    #     genai_client = genai.Client() # Lee la API key de GOOGLE_API_KEY
-    #     logger.info("Cliente Google AI (genai.Client) configurado exitosamente")
-    # except Exception as e:
-    #     logger.error(f"Error configurando genai.Client: {e}")
-    #     genai_client = None
-    genai_client = None # Establecer a None explícitamente
+    # Cliente de Google AI (necesario para Veo 2)
+    try:
+        genai_client = genai.Client() # Lee la API key de GOOGLE_API_KEY
+        logger.info("Cliente Google AI (genai.Client) configurado exitosamente")
+    except Exception as e:
+        logger.error(f"Error configurando genai.Client: {e}")
+        genai_client = None
 
     # Initialize chat instance (para el modelo de texto principal)
     chat = model.start_chat(history=[])
@@ -479,9 +478,11 @@ def generate_video_from_text(prompt_text,
         # Configuración específica para Veo 2
         video_config = genai_types.GenerateVideosConfig(
             person_generation="dont_allow", # O "allow_adult"
-            aspect_ratio=aspect_ratio, # Leído de los parámetros
-            duration_seconds=duration_seconds,
+            aspectRatio=aspect_ratio, # Nombre de parámetro corregido
+            durationSeconds=duration_seconds, # Nombre de parámetro corregido
             number_of_videos=number_of_videos
+            # Añadir cameraMotion si se implementa
+            # **({"cameraMotion": camera_motion} if camera_motion else {})
         )
 
         # Iniciar la operación de generación de video
@@ -1017,7 +1018,7 @@ def handle_chat_post():
             'video_params': {
                 'duration': duration_seconds,
                 'count': number_of_videos,
-                'aspect_ratio': request.json.get('video_aspect_ratio', '16:9') # Leer aspect ratio
+                'aspect_ratio': request.form.get('video_aspect_ratio', '16:9') # Leer aspect ratio desde form
             } if model_type == 'kkty2-video' else None,
             'sid': sid # Pass SID to the background task
         }
@@ -1077,10 +1078,32 @@ def generate_response_task(conversation_id, user_message, processed_images, mode
 
                     if video_urls:
                         response_content = f"Aquí tienes los videos generados a partir de '{user_message}':\n"
+                        # Process each video URL individually
                         for url in video_urls:
-                            response_content += f"[GENERATED_VIDEO:{url}]\n"
+                            response_content += f"[GENERATED_VIDEO:{url}]\n" # Add URL to the final message
+                            # Save individual video info to DB
+                            try:
+                                new_video = GeneratedVideo(
+                                    user_id=current_user.id if current_user.is_authenticated else None,
+                                    prompt=user_message,
+                                    video_url=url
+                                )
+                                db.session.add(new_video)
+                                db.session.commit()
+                                logger.info(f"Video guardado en DB: {url} para usuario {current_user.id if current_user.is_authenticated else 'guest'}")
+                                # Emit specific event for this video
+                                socketio.emit("video_generated", {
+                                    "prompt": user_message,
+                                    "video_url": url,
+                                    "conversation_id": conversation_id
+                                }, room=sid)
+                            except Exception as db_error:
+                                logger.error(f"Error guardando video en DB: {db_error}")
+                                db.session.rollback()
+                        
+                        # Emit the final message containing all video links *after* the loop
                         socketio.emit('message', {'role': 'assistant', 'content': response_content, 'done': True, 'conversation_id': conversation_id}, room=sid)
-                        save_message_to_db(conversation_id, response_content, 'assistant')
+                        save_message_to_db(conversation_id, response_content, 'assistant') # Save the final message
                     else:
                         # This case might happen if generate_video_from_text returns [] on failure
                         error_message = "Lo siento, no pude generar los videos con Veo 2. Hubo un problema durante la generación. Por favor, revisa el prompt o intenta de nuevo."

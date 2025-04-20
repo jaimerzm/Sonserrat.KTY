@@ -512,8 +512,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!messageText && attachedFiles.size === 0) return;
 
-        // Mostrar mensaje del usuario inmediatamente
-        addMessage(messageText, true);
+        // Crear y mostrar la vista previa del mensaje del usuario (texto e imágenes)
+        const userMessageElement = createMessagePreview(messageText, attachedFiles);
+        messagesContainer.appendChild(userMessageElement);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
         // Mostrar indicador de carga
         const loadingIndicator = document.createElement('div');
