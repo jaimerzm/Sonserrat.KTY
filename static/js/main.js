@@ -274,48 +274,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // Si es un mensaje del asistente, animamos el texto
+        // Si es un mensaje del asistente, procesar Markdown y animar si es necesario
         if (!isUser && content.length > 0) {
-            // Dividir el contenido en palabras manteniendo los espacios
-            const words = content.split(/(\s+)/);
-            let delay = 0;
-            
-            words.forEach((word) => {
-                const wordSpan = document.createElement('span');
-                wordSpan.style.display = 'inline-block';
-                
-                // Si es un espacio, lo agregamos directamente
-                if (/^\s+$/.test(word)) {
-                    wordSpan.textContent = word;
-                    textDiv.appendChild(wordSpan);
-                    return;
-                }
-                
-                // Para cada carácter en la palabra
-                Array.from(word).forEach((char) => {
-                    const span = document.createElement('span');
-                    span.textContent = char;
-                    span.className = 'char';
-                    span.style.animationDelay = `${delay}ms`;
-                    
-                    // Ajustar la velocidad de la animación según la longitud del mensaje
-                    if (content.length < 50) {
-                        span.classList.add('short');
-                        delay += 30;
-                    } else if (content.length < 200) {
-                        span.classList.add('medium');
-                        delay += 20;
-                    } else {
-                        span.classList.add('long');
-                        delay += 10;
-                    }
-                    
-                    wordSpan.appendChild(span);
-                });
-                
-                textDiv.appendChild(wordSpan);
-            });
+            // Usar marked.parse para convertir Markdown a HTML
+            const htmlContent = marked.parse(content);
+            textDiv.innerHTML = htmlContent; // Usar innerHTML para renderizar el HTML
+            // La animación de caracteres se elimina ya que interfiere con el HTML renderizado
+            // Si se desea animación, se necesitaría un enfoque más complejo
         } else {
+            // Para mensajes de usuario, simplemente asignar el texto
             textDiv.textContent = content;
         }
         
@@ -553,38 +520,39 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('attachments', file, file.name);
         });
 
-        // Enviar datos al backend
-        fetch('/chat', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => { throw new Error(err.error || 'Error en la respuesta del servidor'); });
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Respuesta del servidor recibida:', data);
-            // El manejo de la respuesta del asistente se hace a través de Socket.IO
-            // Ocultar indicador de carga (se hará cuando llegue el mensaje por socket)
-        })
-        .catch(error => {
-            console.error('Error enviando mensaje:', error);
-            // Ocultar indicador de carga en caso de error
-            if (loadingIndicator) {
-                loadingIndicator.remove();
-            }
-            // Mostrar mensaje de error al usuario
-            addMessage(`Error: ${error.message}`, false);
-        });
+            .then(response => {
+                if (!response.ok) {
+                    // Intentar obtener el mensaje de error del cuerpo JSON
+                    return response.json().then(errData => {
+                        throw new Error(errData.message || `Error del servidor: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Respuesta del servidor:', data); // Para depuración
+                // Actualizar SIEMPRE el ID de la conversación actual
+                if (data.conversation_id) {
+                    currentConversationId = data.conversation_id;
+                    highlightCurrentChat(currentConversationId);
+                }
+                // Recargar conversaciones SOLO si es una nueva conversación
+                if (data.is_new_conversation === true) {
+                    // Añadir un pequeño retraso para dar tiempo a la generación del título
+                    setTimeout(() => {
+                        loadConversations();
+                    }, 500); // 500ms de retraso
+                }
+                // No añadir mensaje del usuario aquí, se añade al recibirlo por socket
+                // addMessage(message, true);
+                userInput.value = '';
+                attachedFiles.clear();
+                attachmentsPreview.innerHTML = '';
+                attachmentsPreview.style.display = 'none';
 
-        // Limpiar input y archivos adjuntos
-        userInput.value = '';
-        attachedFiles.clear();
-        attachmentsPreview.innerHTML = '';
-        attachmentsPreview.style.display = 'none';
-        userInput.style.height = 'auto'; // Reset height after sending
+                // Mostrar indicador de carga
+                showLoadingIndicator();
+            })
     }
 
     // Función para crear una vista previa del mensaje con imágenes
