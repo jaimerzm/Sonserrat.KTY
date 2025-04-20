@@ -819,7 +819,6 @@ def get_gemini_response(conversation_history, user_message, images=None):
             chat_history.append({"role": msg.role, "parts": [{"text": msg.content}]})
         
         # Iniciar chat con historial
-        logger.debug(f"Gemini History (inside get_gemini_response) for Conv: {chat_history}") # <-- ADDED LOGGING
         chat = model.start_chat(history=chat_history)
         
         # Preparar el mensaje del usuario
@@ -1102,6 +1101,9 @@ def generate_response_task(conversation_id, user_message, processed_images, mode
                 return # End task after video logic
 
             # --- Other Model Logic (Gemini, Groq, Image Gen, Web Search etc.) ---
+            # Get conversation history (only needed for models that use it)
+            previous_messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
+            
             assistant_response = ""
             is_streaming = False
             try:
@@ -1121,24 +1123,17 @@ def generate_response_task(conversation_id, user_message, processed_images, mode
                 elif model_type == 'gemini':
                     if not model:
                          raise Exception("Gemini model not initialized.")
-                    # Fetch history right before the call
-                    previous_messages_gemini = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
-                    logger.debug(f"Refetched Gemini History for Conv {conversation_id}: {len(previous_messages_gemini)} messages")
                     # Adapt get_gemini_response if needed, ensure it handles base64 images
-                    assistant_response = get_gemini_response(previous_messages_gemini, user_message, images=processed_images)
+                    assistant_response = get_gemini_response(previous_messages, user_message, images=processed_images)
                 
                 elif model_type == 'groq':
                     if not groq_client:
                         raise Exception("Groq API key not configured.")
                     is_streaming = True # Groq uses streaming
                     
-                    # Fetch history right before the call
-                    previous_messages_groq = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
-                    logger.debug(f"Refetched Groq History for Conv {conversation_id}: {len(previous_messages_groq)} messages")
-                    
                     # Prepare messages for Groq
                     conversation_history_for_groq = []
-                    for msg in previous_messages_groq:
+                    for msg in previous_messages:
                          # Ensure history format is correct for Groq
                          role = msg.role if msg.role in ['user', 'assistant'] else 'user' # Default unknown roles to user
                          conversation_history_for_groq.append({"role": role, "content": msg.content})
@@ -1150,7 +1145,6 @@ def generate_response_task(conversation_id, user_message, processed_images, mode
                          user_content_for_groq += "\n[Nota: El usuario adjuntó imágenes. No puedo verlas directamente.]" 
                     
                     messages_for_groq = conversation_history_for_groq + [{"role": "user", "content": user_content_for_groq}]
-                    logger.debug(f"Groq History for Conv {conversation_id}: {messages_for_groq}") # <-- ADDED LOGGING
                     
                     # Select appropriate Groq model
                     groq_model_name = "meta-llama/llama-4-maverick-17b-128e-instruct"  # Llama 4 Maverick (Meta)
