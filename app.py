@@ -17,6 +17,7 @@ import pathlib
 import textwrap
 import mimetypes
 from groq import Groq
+genai_types = genai.types # Usar el alias genai importado previamente
 
 # Configuración de logging
 logging.basicConfig(
@@ -108,12 +109,33 @@ try:
 
     # Usar el mismo modelo para todo
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-pro",
+        model_name="gemini-2.0-flash",    # Última versión Gemini 2.0 Flash
         generation_config=generation_config,
         safety_settings=safety_settings
     )
-    
-    # Initialize chat instance
+
+    # Modelo para generación/edición de imágenes (Gemini Flash)
+    try:
+        image_gen_model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash-exp-image-generation",  # Gemini Flash 2.0 Experimento (imagen)
+            generation_config=generation_config, # Ajustar si es necesario
+            safety_settings=safety_settings
+        )
+        logger.info("Modelo de generación de imágenes configurado exitosamente")
+    except Exception as e:
+        logger.error(f"Error configurando modelo de generación de imágenes: {e}")
+        image_gen_model = None
+
+    # Cliente de Google AI (necesario para Veo 2) - Comentado temporalmente
+    # try:
+    #     genai_client = genai.Client() # Lee la API key de GOOGLE_API_KEY
+    #     logger.info("Cliente Google AI (genai.Client) configurado exitosamente")
+    # except Exception as e:
+    #     logger.error(f"Error configurando genai.Client: {e}")
+    #     genai_client = None
+    genai_client = None # Establecer a None explícitamente
+
+    # Initialize chat instance (para el modelo de texto principal)
     chat = model.start_chat(history=[])
     logger.info("Google AI model y chat configurados exitosamente")
     logger.info("Google AI configurado exitosamente")
@@ -181,9 +203,11 @@ def process_image(file):
         logger.error(f"Error en process_image: {e}")
         return None
 
+# --- Mover la inicialización de Flask aquí ---
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE  # 20MB max-limit
+# --- Fin de la inicialización movida ---
 
 # Asegurarse de que el directorio instance existe
 instance_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'instance')
@@ -308,28 +332,26 @@ def generate_image_edit_from_upload(input_image, prompt):
         if not processed_image:
             return "Error: No se pudo procesar la imagen para edición."
         
-        # Configurar la API key para el modelo de edición de imágenes
+        # Configurar la API key y usar instancia global de edición
         genai.configure(api_key=GOOGLE_API_KEY)
-        
-        # Usar el modelo correcto para edición de imágenes
-        model_name = "gemini-2.0-flash-exp-image-generation"
-        
-        # Crear el modelo generativo
-        image_model = genai.GenerativeModel(model_name)
-        
+        global image_gen_model
+        if image_gen_model is None:
+            raise Exception("Modelo de edición de imágenes no está inicializado")
+        image_model = image_gen_model
+
         # Preparar la imagen para la API
         img = PIL.Image.open(processed_image)
         if img.mode != 'RGB':
             img = img.convert('RGB')
-        
-        # Preparar la solicitud para editar imagen
+
+        # Configuración de generación específica para edición de imágenes
         generation_config = {
             "temperature": 0.7,
             "top_p": 1.0,
             "top_k": 32,
             "max_output_tokens": 2048,
         }
-        
+
         # Crear el contenido para la solicitud
         content = [
             {"text": f"Edita esta imagen según estas instrucciones: {prompt}"},
@@ -338,8 +360,7 @@ def generate_image_edit_from_upload(input_image, prompt):
                 "data": base64.b64encode(processed_image.getvalue()).decode('utf-8')
             }}
         ]
-        
-        # Realizar la llamada al modelo para edición de imágenes
+
         response = image_model.generate_content(
             content,
             generation_config=generation_config
@@ -427,6 +448,112 @@ def with_retries(max_retries=3, delay=1):
                     time.sleep(delay)
         return wrapper
     return decorator
+
+@with_retries()
+def generate_video_from_text(prompt_text,
+                             duration_seconds: int = 5,
+                             number_of_videos: int = 1,
+                             aspect_ratio: str = "16:9"):
+    """
+    Genera videos a partir de un prompt de texto usando Google Veo 2.
+
+    Args:
+        prompt_text (str): El texto que describe el video a generar.
+        duration_seconds (int): Duración del video en segundos (5-8).
+        number_of_videos (int): Número de videos a generar (1-4).
+
+    Returns:
+        list: Lista de URLs de los videos generados o lista vacía en caso de error.
+    """
+    if not genai_client:
+        logger.error("El cliente de Google AI (genai.Client) no está configurado.")
+        return []
+
+    try:
+        logger.info(f"Generando video desde texto: '{prompt_text}', Duración: {duration_seconds}s, Cantidad: {number_of_videos}")
+
+        # Validar parámetros
+        duration_seconds = max(5, min(int(duration_seconds), 8))
+        number_of_videos = max(1, min(int(number_of_videos), 4))
+
+        # Configuración específica para Veo 2
+        video_config = genai_types.GenerateVideosConfig(
+            person_generation="dont_allow", # O "allow_adult"
+            aspect_ratio=aspect_ratio, # Leído de los parámetros
+            duration_seconds=duration_seconds,
+            number_of_videos=number_of_videos
+        )
+
+        # Iniciar la operación de generación de video
+        operation = genai_client.models.generate_videos(
+            model="veo-2.0-generate-001", # Asegúrate de que este sea el nombre correcto del modelo Veo 2
+            prompt=prompt_text,
+            config=video_config,
+        )
+
+        logger.info(f"Operación de generación de video iniciada: {operation.name}")
+
+        # Esperar a que la operación se complete (con timeouts y logging)
+        timeout_seconds = 300 # 5 minutos de timeout total
+        poll_interval_seconds = 20
+        start_time = time.time()
+
+        while not operation.done:
+            current_time = time.time()
+            if current_time - start_time > timeout_seconds:
+                logger.error(f"Timeout esperando la generación del video (Operación: {operation.name})")
+                return []
+
+            logger.debug(f"Esperando {poll_interval_seconds}s para la operación {operation.name}...")
+            time.sleep(poll_interval_seconds)
+            try:
+                operation = genai_client.operations.get(operation)
+                logger.debug(f"Estado de la operación {operation.name}: {'Done' if operation.done else 'Running'}")
+            except Exception as poll_error:
+                logger.error(f"Error al obtener el estado de la operación {operation.name}: {poll_error}")
+                # Considerar si continuar o fallar aquí
+                time.sleep(poll_interval_seconds) # Esperar antes de reintentar
+
+        # Procesar la respuesta
+        video_urls = []
+        if operation.response and hasattr(operation.response, 'generated_videos'):
+            for n, generated_video in enumerate(operation.response.generated_videos):
+                try:
+                    # Crear un nombre de archivo único
+                    timestamp = int(time.time())
+                    filename = f"generated_video_{timestamp}_{n}.mp4"
+                    filepath = os.path.join(UPLOAD_FOLDER, filename)
+
+                    # Descargar y guardar el video
+                    logger.info(f"Descargando video {n+1}/{len(operation.response.generated_videos)}...")
+                    # Usar el método save directamente si está disponible en el objeto video
+                    if hasattr(generated_video.video, 'save'):
+                        generated_video.video.save(filepath)
+                    else:
+                        # Si no, intentar descargar y luego guardar manualmente
+                        # Nota: El SDK podría cambiar, esto es un fallback
+                        file_info = genai_client.files.get(name=generated_video.video.name)
+                        downloaded_content = genai_client.files.download(name=file_info.name)
+                        with open(filepath, 'wb') as f:
+                            f.write(downloaded_content)
+
+                    logger.info(f"Video guardado en: {filepath}")
+
+                    # Crear URL para el video
+                    video_url = f"/uploads/{filename}"
+                    video_urls.append(video_url)
+
+                except Exception as video_save_error:
+                    logger.error(f"Error al descargar o guardar el video {n}: {str(video_save_error)}")
+            logger.info(f"Se generaron y guardaron {len(video_urls)} videos.")
+        else:
+            logger.warning(f"La operación {operation.name} finalizó pero no se encontraron videos generados en la respuesta.")
+
+        return video_urls
+
+    except Exception as e:
+        logger.error(f"Error en generate_video_from_text: {str(e)}")
+        return []
 
 @with_retries()
 def generate_image_from_text(prompt_text):
@@ -681,7 +808,7 @@ def get_gemini_response(conversation_history, user_message, images=None):
         
         # Crear el modelo
         model = genai.GenerativeModel(
-            model_name="gemini-1.5-pro",
+            model_name="gemini-2.0-flash",    # Última versión Gemini 2.0 Flash
             generation_config=generation_config,
             safety_settings=safety_settings
         )
@@ -692,6 +819,7 @@ def get_gemini_response(conversation_history, user_message, images=None):
             chat_history.append({"role": msg.role, "parts": [{"text": msg.content}]})
         
         # Iniciar chat con historial
+        logger.debug(f"Gemini History (inside get_gemini_response) for Conv: {chat_history}") # <-- ADDED LOGGING
         chat = model.start_chat(history=chat_history)
         
         # Preparar el mensaje del usuario
@@ -727,8 +855,403 @@ def get_gemini_response(conversation_history, user_message, images=None):
         logger.error(f"Error en get_gemini_response: {str(e)}", exc_info=True)
         return f"Error al generar respuesta: {str(e)}"
 
+import base64
+import mimetypes
+from functools import wraps
+
+# Decorador para reintentos (si no existe, definir uno simple)
+def with_retries(retries=3, delay=5):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exception = None
+            for attempt in range(retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    logger.warning(f"Attempt {attempt + 1}/{retries} failed for {func.__name__}: {e}")
+                    last_exception = e
+                    time.sleep(delay)
+            logger.error(f"{func.__name__} failed after {retries} retries.")
+            raise last_exception
+        return wrapper
+    return decorator
+
+# Función auxiliar para guardar mensajes (si no existe)
+def save_message_to_db(conversation_id, content, role):
+    try:
+        message = Message(conversation_id=conversation_id, content=content, role=role)
+        db.session.add(message)
+        db.session.commit()
+        logger.debug(f"Saved message to DB: ConvID={conversation_id}, Role={role}, Content='{content[:50]}...'")
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error saving message to DB: {e}")
+
+# Función auxiliar para guardar archivos binarios (si no existe)
+def save_binary_file(filepath, data):
+    try:
+        with open(filepath, 'wb') as f:
+            f.write(data)
+        logger.info(f"File saved successfully: {filepath}")
+    except Exception as e:
+        logger.error(f"Error saving binary file {filepath}: {e}")
+        raise
+
+@app.route('/chat', methods=['POST'])
+@login_required
+def handle_chat_post():
+    # This route handles the initial POST request from the frontend
+    # It starts the generation process and returns an initial JSON response.
+    # The actual result will be sent via Socket.IO.
+    try:
+        user_message = request.form.get('message', '').strip()
+        conversation_id_str = request.form.get('conversation_id')
+        model_type = request.form.get('model', 'gemini')
+        files = request.files.getlist('attachments') # Use request.files for FormData
+        is_web_search = request.form.get('web_search', 'false').lower() == 'true'
+        # Get video params if model is video
+        duration_seconds = request.form.get('durationSeconds')
+        number_of_videos = request.form.get('numberOfVideos')
+
+        # Try to get SID from session if stored, otherwise None
+        sid = session.get('sid') 
+        logger.debug(f"Received POST /chat - ConvID: {conversation_id_str}, Model: {model_type}, Files: {len(files)}, WebSearch: {is_web_search}, SID: {sid}")
+
+        # --- Get or Create Conversation --- 
+        conversation_id = None
+        if not conversation_id_str or conversation_id_str.lower() == 'null' or conversation_id_str == 'undefined':
+            conversation = Conversation(user_id=current_user.id, model_name=model_type, title="Nueva Conversación")
+            db.session.add(conversation)
+            db.session.commit()
+            conversation_id = conversation.id
+            logger.info(f"Created new conversation via POST: {conversation_id}")
+            # Emit new conversation info immediately if created here
+            socketio.emit('conversation_update', {
+                'id': conversation.id,
+                'title': conversation.title,
+                'starred': conversation.starred,
+                'created_at': conversation.created_at.isoformat()
+            }, room=sid) # Emit to specific user if SID is known
+        else:
+            try:
+                conversation_id = int(conversation_id_str)
+                conversation = db.session.get(Conversation, conversation_id)
+                if not conversation or conversation.user_id != current_user.id:
+                    logger.error(f"Invalid or unauthorized conversation ID: {conversation_id}")
+                    return jsonify({'status': 'error', 'message': 'Conversación inválida o no autorizada'}), 403
+            except ValueError:
+                 logger.error(f"Invalid conversation ID format: {conversation_id_str}")
+                 return jsonify({'status': 'error', 'message': 'ID de conversación inválido'}), 400
+
+        # --- Process Attachments (Images) --- 
+        processed_images = []
+        if files:
+            logger.debug(f"Processing {len(files)} files from POST")
+            for file in files:
+                if file and file.filename:
+                    if file.content_type.startswith('image/'):
+                        try:
+                            # Read file content into memory
+                            file_content = file.read()
+                            # Encode to base64 for consistency
+                            encoded_content = base64.b64encode(file_content).decode('utf-8')
+                            processed_images.append({
+                                'mime_type': file.content_type,
+                                'data': encoded_content # Send base64 encoded data
+                            })
+                            logger.debug(f"Processed image: {file.filename}")
+                        except Exception as img_proc_error:
+                            logger.error(f"Error processing image {file.filename}: {img_proc_error}")
+                    else:
+                        logger.warning(f"Skipping non-image file: {file.filename}")
+            if not processed_images and files:
+                 logger.warning("Files were attached but none could be processed as images.")
+                 # Decide if this is an error or just a note
+
+        # --- Save User Message --- 
+        if user_message or processed_images: # Save even if only images are sent
+            db_message_content = user_message
+            if processed_images:
+                db_message_content += f"\n[{len(processed_images)} image(s) attached]"
+            save_message_to_db(conversation_id, db_message_content.strip(), 'user')
+            # Frontend should optimistically display the user message
+
+        # --- Handle Title Generation --- 
+        if conversation.title == "Nueva Conversación" and user_message:
+            try:
+                title_prompt = f"Generate a short, descriptive title (max 5 words) for a conversation that starts with: {user_message}"
+                generated_title = None
+                if groq_client: # Prioritize Groq for speed if available
+                    title_completion = groq_client.chat.completions.create(
+                        model="meta-llama/llama-4-maverick-17b-128e-instruct", # Use Maverick for title
+                        messages=[{"role": "user", "content": title_prompt}],
+                        max_tokens=15,
+                        temperature=0.5
+                    )
+                    generated_title = title_completion.choices[0].message.content.strip().replace('"', '')
+                elif GOOGLE_API_KEY: # Fallback to Gemini if Groq unavailable
+                     # Use a faster Gemini model if possible, or the main one
+                     # title_response = model.generate_content(title_prompt) # This might be slow
+                     # generated_title = title_response.text.strip().replace('"', '')
+                     pass # Skipping Gemini title gen for now to keep it fast
+                
+                conversation.title = generated_title[:50] if generated_title else user_message[:50].strip()
+                db.session.commit()
+                logger.info(f"Generated title for Conv {conversation_id}: {conversation.title}")
+                # Emit title update
+                socketio.emit('conversation_update', {
+                    'id': conversation_id,
+                    'title': conversation.title
+                }, room=sid) # Emit to specific user if SID is known
+            except Exception as title_err:
+                 logger.error(f"Error generating title: {title_err}")
+                 # Continue without title generation if it fails
+
+        # --- Trigger Background Task for Response Generation --- 
+        task_data = {
+            'conversation_id': conversation_id,
+            'user_message': user_message,
+            'processed_images': processed_images,
+            'model_type': model_type,
+            'is_web_search': is_web_search,
+            'video_params': {
+                'duration': duration_seconds,
+                'count': number_of_videos,
+                'aspect_ratio': request.json.get('video_aspect_ratio', '16:9') # Leer aspect ratio
+            } if model_type == 'kkty2-video' else None,
+            'sid': sid # Pass SID to the background task
+        }
+        socketio.start_background_task(target=generate_response_task, **task_data)
+
+        # Return immediate JSON response to the fetch call
+        return jsonify({'status': 'processing', 'message': 'Solicitud recibida, procesando...', 'conversation_id': conversation_id})
+
+    except Exception as e:
+        logger.error(f"Error in /chat POST handler: {str(e)}", exc_info=True)
+        return jsonify({'status': 'error', 'message': f'Error interno del servidor: {str(e)}'}), 500
+
+# Separate function for background task
+def generate_response_task(conversation_id, user_message, processed_images, model_type, is_web_search, video_params, sid):
+    with app.app_context(): # Need app context for DB operations and config
+        try:
+            logger.info(f"Background task started for Conv {conversation_id}, Model: {model_type}, SID: {sid}")
+            
+            # --- Lógica de Generación de Video (kkty2-video) --- 
+            if model_type == 'kkty2-video':
+                if not user_message:
+                    error_msg = 'Por favor, proporciona un prompt para generar el video.'
+                    socketio.emit('message', {'role': 'assistant', 'content': error_msg, 'done': True, 'conversation_id': conversation_id}, room=sid)
+                    save_message_to_db(conversation_id, error_msg, 'assistant')
+                    return
+
+                # Safely get video params with defaults
+                duration = 5
+                count = 1
+                try:
+                    if video_params:
+                        duration = int(video_params.get('duration', 5))
+                        count = int(video_params.get('count', 1))
+                except (ValueError, TypeError):
+                    logger.warning(f"Invalid video parameters received: {video_params}. Using defaults.")
+                
+                # Clamp values to reasonable limits
+                duration = max(5, min(duration, 8))
+                count = max(1, min(count, 4))
+                aspect = video_params.get('aspect_ratio', '16:9')
+                if aspect not in ['16:9', '9:16']:
+                    aspect = '16:9' # Default a 16:9 si es inválido
+
+                logger.info(f"Video generation request: Duration={duration}, Count={count}, Aspect={aspect}")
+
+                try:
+                    # Emit message indicating start
+                    start_msg = f'Generando {count} video(s) de {duration}s con Veo 2... (esto puede tardar unos minutos)'
+                    socketio.emit('message', {'role': 'assistant', 'content': start_msg, 'done': False, 'conversation_id': conversation_id}, room=sid)
+                    
+                    # Call the video generation function
+                    # Ensure generate_video_from_text is defined correctly and handles potential errors
+                    video_urls = generate_video_from_text(user_message, 
+                                                        duration_seconds=duration, 
+                                                        number_of_videos=count, 
+                                                        aspect_ratio=aspect)
+
+                    if video_urls:
+                        response_content = f"Aquí tienes los videos generados a partir de '{user_message}':\n"
+                        for url in video_urls:
+                            response_content += f"[GENERATED_VIDEO:{url}]\n"
+                        socketio.emit('message', {'role': 'assistant', 'content': response_content, 'done': True, 'conversation_id': conversation_id}, room=sid)
+                        save_message_to_db(conversation_id, response_content, 'assistant')
+                    else:
+                        # This case might happen if generate_video_from_text returns [] on failure
+                        error_message = "Lo siento, no pude generar los videos con Veo 2. Hubo un problema durante la generación. Por favor, revisa el prompt o intenta de nuevo."
+                        socketio.emit('message', {'role': 'assistant', 'content': error_message, 'done': True, 'conversation_id': conversation_id}, room=sid)
+                        save_message_to_db(conversation_id, error_message, 'assistant')
+
+                except Exception as video_error:
+                    logger.error(f"Error generando video con Veo 2: {str(video_error)}", exc_info=True)
+                    error_msg = f'Error al generar el video con Veo 2: {str(video_error)}'
+                    # Check for specific API errors if possible
+                    if "API key not valid" in str(video_error):
+                         error_msg = "Error: La clave API para la generación de video no es válida o falta."
+                    elif "quota" in str(video_error).lower():
+                         error_msg = "Error: Se ha excedido la cuota para la generación de video."
+                    
+                    socketio.emit('message', {'role': 'assistant', 'content': error_msg, 'done': True, 'conversation_id': conversation_id}, room=sid)
+                    save_message_to_db(conversation_id, error_msg, 'assistant')
+                return # End task after video logic
+
+            # --- Other Model Logic (Gemini, Groq, Image Gen, Web Search etc.) ---
+            assistant_response = ""
+            is_streaming = False
+            try:
+                if is_web_search:
+                     logger.info(f"Performing web search for: {user_message}")
+                     try:
+                         search_prompt = f"Actúa como un asistente de búsqueda web experto. Busca información sobre: {user_message}. Proporciona una respuesta detallada y actualizada."
+                         # Ensure 'model' is the correct Gemini model instance configured for text
+                         if not model:
+                             raise Exception("Gemini text model not initialized.")
+                         response = model.generate_content(search_prompt)
+                         assistant_response = response.text
+                     except Exception as search_err:
+                         logger.error(f"Error during web search generation: {search_err}")
+                         assistant_response = f"Error al realizar la búsqueda web: {search_err}"
+
+                elif model_type == 'gemini':
+                    if not model:
+                         raise Exception("Gemini model not initialized.")
+                    # Fetch history right before the call
+                    previous_messages_gemini = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
+                    logger.debug(f"Refetched Gemini History for Conv {conversation_id}: {len(previous_messages_gemini)} messages")
+                    # Adapt get_gemini_response if needed, ensure it handles base64 images
+                    assistant_response = get_gemini_response(previous_messages_gemini, user_message, images=processed_images)
+                
+                elif model_type == 'groq':
+                    if not groq_client:
+                        raise Exception("Groq API key not configured.")
+                    is_streaming = True # Groq uses streaming
+                    
+                    # Fetch history right before the call
+                    previous_messages_groq = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
+                    logger.debug(f"Refetched Groq History for Conv {conversation_id}: {len(previous_messages_groq)} messages")
+                    
+                    # Prepare messages for Groq
+                    conversation_history_for_groq = []
+                    for msg in previous_messages_groq:
+                         # Ensure history format is correct for Groq
+                         role = msg.role if msg.role in ['user', 'assistant'] else 'user' # Default unknown roles to user
+                         conversation_history_for_groq.append({"role": role, "content": msg.content})
+
+                    user_content_for_groq = user_message
+                    if processed_images:
+                         # Check if a vision model is available and selected for Groq
+                         # For now, assume text model and add note
+                         user_content_for_groq += "\n[Nota: El usuario adjuntó imágenes. No puedo verlas directamente.]" 
+                    
+                    messages_for_groq = conversation_history_for_groq + [{"role": "user", "content": user_content_for_groq}]
+                    logger.debug(f"Groq History for Conv {conversation_id}: {messages_for_groq}") # <-- ADDED LOGGING
+                    
+                    # Select appropriate Groq model
+                    groq_model_name = "meta-llama/llama-4-maverick-17b-128e-instruct"  # Llama 4 Maverick (Meta)
+                    # if processed_images and groq_vision_model_available:
+                    #     groq_model_name = "groq-vision-model-name" # Keep vision model separate if needed
+
+                    completion = groq_client.chat.completions.create(
+                        model=groq_model_name, 
+                        messages=messages_for_groq,
+                        temperature=0.7,
+                        max_tokens=2048,
+                        stream=True
+                    )
+                    
+                    # Stream response back via Socket.IO
+                    full_groq_response = ""
+                    for chunk in completion:
+                        if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                            chunk_content = chunk.choices[0].delta.content
+                            full_groq_response += chunk_content
+                            # Emit progress chunks
+                            socketio.emit('message_progress', {'content': chunk_content, 'conversation_id': conversation_id}, room=sid)
+                    assistant_response = full_groq_response # Store full response for DB
+                    # Emit final message marker for streaming
+                    socketio.emit('message', {'role': 'assistant', 'content': '', 'done': True, 'conversation_id': conversation_id}, room=sid)
+
+                # Add logic for image generation models if they were part of handle_message
+                # elif model_type == 'gemini-flash-image':
+                #     assistant_response = generate_image_from_text(user_message)
+                # elif model_type == 'gemini-image-edit': # Example
+                #     if processed_images:
+                #         assistant_response = generate_image_edit_from_upload(processed_images[0]['data'], user_message)
+                #     else:
+                #         assistant_response = "Se requiere una imagen para la edición."
+
+                else: # Default or unknown model
+                    logger.warning(f"Unsupported model type requested: {model_type}")
+                    assistant_response = f"Modelo '{model_type}' no soportado o no reconocido."
+
+                # --- Emit final response (only if not streaming) --- 
+                if not is_streaming:
+                    socketio.emit('message', {
+                        'role': 'assistant',
+                        'content': assistant_response,
+                        'done': True,
+                        'conversation_id': conversation_id
+                    }, room=sid)
+                
+                # --- Save Assistant Response --- 
+                if assistant_response:
+                    save_message_to_db(conversation_id, assistant_response, 'assistant')
+                logger.info(f"Background task finished successfully for Conv {conversation_id}")
+
+            except Exception as api_error:
+                logger.error(f"Error during API call in background task (Conv {conversation_id}): {str(api_error)}", exc_info=True)
+                error_msg = f"Error al generar respuesta: {str(api_error)}"
+                if "429" in str(api_error):
+                    error_msg = "Lo siento, hemos alcanzado el límite de la API. Por favor, intenta de nuevo más tarde."
+                # Emit error message
+                socketio.emit('message', {'role': 'assistant', 'content': error_msg, 'done': True, 'conversation_id': conversation_id}, room=sid)
+                save_message_to_db(conversation_id, error_msg, 'assistant') # Save error message
+
+        except Exception as task_error:
+            logger.error(f"Critical error in background task generate_response_task (Conv {conversation_id}): {str(task_error)}", exc_info=True)
+            # Emit generic error if task fails unexpectedly
+            error_msg = f'Error interno grave al procesar la solicitud.'
+            socketio.emit('message', {'role': 'assistant', 'content': error_msg, 'done': True, 'conversation_id': conversation_id}, room=sid)
+            save_message_to_db(conversation_id, f'Error interno grave: {str(task_error)}', 'assistant')
+
+# Store SID in session on connect
+@socketio.on('connect')
+def handle_connect():
+    if current_user.is_authenticated:
+        session['sid'] = request.sid
+        logger.info(f"User {current_user.username} connected with SID: {request.sid}")
+    else:
+        logger.warning("Unauthenticated user connected")
+        # Optionally disconnect unauthenticated users
+        # return False 
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    if current_user.is_authenticated:
+        logger.info(f"User {current_user.username} disconnected SID: {request.sid}")
+        # Optionally clear SID from session
+        # session.pop('sid', None)
+    else:
+        logger.info(f"Unauthenticated user disconnected SID: {request.sid}")
+
+# Keep the original @socketio.on('message') for potential future use or other message types
+# but ensure it does NOT handle the main chat generation logic anymore.
 @socketio.on('message')
-def handle_message(data):
+def handle_socket_message(data):
+    # This handler is NO LONGER used for chat generation.
+    # It can be used for other real-time interactions if needed.
+    logger.debug(f"Received socket message (not for chat generation): {data}")
+    # Example: Handle a 'typing' indicator
+    sid = session.get('sid')
+    if data.get('type') == 'typing' and current_user.is_authenticated:
+         emit('typing_status', {'user': current_user.username, 'is_typing': data.get('is_typing')}, broadcast=True, include_self=False, room=sid) # Emit to others
+    pass
     try:
         user_message = data.get('message', '').strip()
         conversation_id = data.get('conversationId')
@@ -810,7 +1333,7 @@ def handle_message(data):
                     conversation.title = title_response.text[:200]  # Limit title length
                 elif model_type == 'groq' and groq_client:
                     title_completion = groq_client.chat.completions.create(
-                        model="llama-3.3-70b-versatile",
+                        model="meta-llama/llama-4-maverick-17b-128e-instruct",
                         messages=[{"role": "user", "content": title_prompt}],
                         max_tokens=10
                     )
@@ -1017,6 +1540,7 @@ def handle_message(data):
                         'done': True
                     })
                     
+            # --- Lógica de Groq ---        
             elif model_type == 'groq':
                 if not groq_client:
                     raise Exception("Groq API no está configurada. Por favor, configure GROQ_API_KEY en el archivo .env")
@@ -1043,7 +1567,7 @@ def handle_message(data):
                 # Crear la solicitud a la API de Groq con el historial de la conversación
                 messages = conversation_history_text + [{"role": "user", "content": user_content}]
                 completion = groq_client.chat.completions.create(
-                    model="llama-3.3-70b-versatile",
+                    model="meta-llama/llama-4-maverick-17b-128e-instruct",
                     messages=messages,
                     **common_params
                 )
@@ -1078,28 +1602,58 @@ def handle_message(data):
                 # Guardar la respuesta del asistente en la base de datos
                 save_message_to_db(conversation_id, accumulated_response, 'assistant')
             else:  # default to gemini
-                # Preparar el mensaje para Gemini
-                parts = []
-                if user_message:
-                    parts.append({"text": user_message})
+                # Preparar el contenido para la llamada a la API de Gemini, incluyendo el historial
+                contents_for_gemini = []
                 
+                # Añadir mensajes del historial
+                for msg in conversation_history_text:
+                    # Asegurar que los roles del historial sean 'user' o 'model'
+                    role = 'model' if msg['role'] == 'assistant' else msg['role']
+                    # Asumiendo que msg['content'] es texto plano. Si puede incluir imágenes, se necesita lógica adicional.
+                    contents_for_gemini.append({"role": role, "parts": [{"text": msg['content']}]})
+
+                # Preparar las partes del mensaje actual del usuario
+                current_user_parts = []
+                if user_message:
+                    current_user_parts.append({"text": user_message})
+                
+                # Añadir imágenes si las hay al mensaje actual del usuario
                 if processed_images:
                     for img in processed_images:
-                        parts.append({
+                        current_user_parts.append({
                             "inline_data": {
                                 "mime_type": img['mime_type'],
                                 "data": img['data']
                             }
                         })
                     if not user_message:
-                        parts.append({"text": "Describe lo que ves en esta imagen"})
+                        # Añadir un prompt por defecto si solo se envían imágenes
+                        current_user_parts.append({"text": "Describe lo que ves en esta imagen"})
                 
-                response = chat.send_message(parts)
-                if hasattr(response, 'resolve'):
-                    response.resolve()
+                # Añadir el mensaje actual del usuario al contenido si hay partes
+                if current_user_parts:
+                    contents_for_gemini.append({"role": "user", "parts": current_user_parts})
                 
-                # Extract only the response text
-                assistant_response = response.text
+                # Llamar a generate_content con el historial completo y el mensaje actual
+                # Asegurarse de que contents_for_gemini no esté vacío antes de llamar
+                if contents_for_gemini:
+                    # --- Add logging here ---
+                    logger.debug(f"Llamando a generate_content con el siguiente historial para conversation_id {conversation_id}:")
+                    try:
+                        # Usar json.dumps para una mejor visualización, manejar errores si no es serializable
+                        logger.debug(json.dumps(contents_for_gemini, indent=2, ensure_ascii=False))
+                    except TypeError:
+                        logger.debug(f"Contenido no serializable (puede contener datos binarios): {contents_for_gemini}")
+                    # --- End logging ---
+                    response = model.generate_content(contents=contents_for_gemini)
+                    if hasattr(response, 'resolve'):
+                        response.resolve()
+                    # Extraer solo el texto de la respuesta
+                    assistant_response = response.text
+                else:
+                    # Manejar el caso donde no hay contenido para enviar (ej. primer mensaje vacío)
+                    assistant_response = "Por favor, envía un mensaje o una imagen."
+                    logger.warning("Intento de llamada a generate_content sin contenido.")
                 
                 # Emitir la respuesta
                 emit('message', {
@@ -1305,7 +1859,7 @@ def test_api():
         genai.configure(api_key=api_key)
         
         # Intentar crear el modelo
-        model = genai.GenerativeModel('gemini-pro')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         
         # Hacer una prueba simple
         response = model.generate_content("Di hola y confirma que estás funcionando correctamente.")
@@ -1330,7 +1884,7 @@ if __name__ == '__main__':
             logger.error(f"Error al crear la base de datos: {e}")
     
     # Configuración para entorno de desarrollo y producción
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 5000)) # Changed default port to 5000
     debug = os.environ.get('FLASK_ENV') == 'development'
     
     # En entorno local usamos socketio.run, en producción gunicorn maneja esto
@@ -1340,4 +1894,5 @@ if __name__ == '__main__':
     else:
         # En desarrollo local
         app.logger.info(f"Ejecutando en modo desarrollo en puerto {port}")
+        # Use the modified port variable here
         socketio.run(app, debug=debug, host='0.0.0.0', port=port)

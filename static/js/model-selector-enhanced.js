@@ -34,7 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const models = [
         { value: 'gemini', name: 'Chat.KTY (VISION)', icon: 'fa-brain', color: '#4285f4' },
         { value: 'groq', name: 'Jaime LLM pro 2.0', icon: 'fa-bolt', color: '#fbbc05' },
-        { value: 'gemini-flash', name: 'Gemini 2.0 Flash (Imágenes/Edición)', icon: 'fa-image', color: '#ea4335' }
+        { value: 'gemini-flash', name: 'Gemini 2.0 Flash (Imágenes/Edición)', icon: 'fa-image', color: '#ea4335' },
+        { value: 'kkty2-video', name: 'KKTY 2 (video generation)', icon: 'fa-video', color: '#34a853' } // Nueva opción de video
     ];
 
     // Set initial model

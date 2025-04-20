@@ -1,7 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const socket = io();
     
-    const modelName = document.getElementById('model-name');
+    const modelSelector = document.getElementById('model-selector'); // Get the hidden select
+    const modelNameElements = document.querySelectorAll('#model-name'); // Get all elements displaying the model name
 
     // Model selection is handled by model-selector-enhanced.js
     const messagesContainer = document.getElementById('chat-messages');
@@ -18,12 +19,74 @@ document.addEventListener('DOMContentLoaded', () => {
     const userDropdown = document.getElementById('user-dropdown');
     const logoutButtonDiscrete = document.querySelector('.logout-button-discrete');
 
+    // Video options elements
+    const videoOptionsContainer = document.getElementById('video-options');
+    const videoDurationSlider = document.getElementById('video-duration');
+    const durationValueSpan = document.getElementById('duration-value');
+    const videoCountSlider = document.getElementById('video-count');
+    const countValueSpan = document.getElementById('count-value');
+    // Nuevos controles de video
+    const videoControlsDiv = document.querySelector('.video-controls');
+    const videoDurationSelect = document.getElementById('video-duration');
+    const videoAspectSelect = document.getElementById('video-aspect');
+    const videoCountInput = document.getElementById('video-count');
+
     let currentConversationId = null;
     let isVideoMode = false;
     let isWebSearchMode = false;
 
     // Variables para manejar archivos
     let attachedFiles = new Map();
+
+    // --- Video Options Logic Start ---
+    function updateVideoOptionsVisibility() {
+        const selectedModel = modelSelector.value;
+        if (selectedModel === 'kkty2-video') {
+            videoOptionsContainer.style.display = 'flex';
+        } else {
+            videoOptionsContainer.style.display = 'none';
+        }
+    }
+
+    if (videoDurationSlider && durationValueSpan) {
+        videoDurationSlider.addEventListener('input', () => {
+            durationValueSpan.textContent = `${videoDurationSlider.value}s`;
+        });
+        // Set initial value display
+        durationValueSpan.textContent = `${videoDurationSlider.value}s`;
+    }
+
+    if (videoCountSlider && countValueSpan) {
+        videoCountSlider.addEventListener('input', () => {
+            countValueSpan.textContent = videoCountSlider.value;
+        });
+        // Set initial value display
+        countValueSpan.textContent = videoCountSlider.value;
+    }
+
+    // Listen for changes on the hidden model selector
+    modelSelector.addEventListener('change', updateVideoOptionsVisibility);
+
+    // Initial check on page load
+    updateVideoOptionsVisibility();
+    // --- Video Options Logic End ---
+
+    // --- Visibilidad de Controles de Video (NUEVO) ---
+    function updateVideoControlsVisibility() {
+        const selectedModel = modelSelector.value;
+        if (selectedModel === 'kkty2-video') {
+            videoControlsDiv.classList.add('visible');
+        } else {
+            videoControlsDiv.classList.remove('visible');
+        }
+    }
+
+    // Escuchar cambios en el selector de modelo
+    modelSelector.addEventListener('change', updateVideoControlsVisibility);
+
+    // Comprobación inicial al cargar la página
+    updateVideoControlsVisibility();
+    // --- Fin Visibilidad Controles ---
 
     // Toggle user dropdown menu
     userInfoTrigger.addEventListener('click', () => {
@@ -135,19 +198,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Nueva conversación
     newChatButton.addEventListener('click', () => {
-        fetch('/api/conversations', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            currentConversationId = data.id;
-            messagesContainer.innerHTML = '';
-            loadConversations();
-        })
-        .catch(error => console.error('Error creando conversación:', error));
+        currentConversationId = null; // Reset conversation ID
+        messagesContainer.innerHTML = ''; // Clear messages
+        highlightCurrentChat(null); // Deselect any highlighted chat
+        userInput.value = ''; // Clear input
+        attachmentsPreview.innerHTML = ''; // Clear attachments
+        attachmentsPreview.style.display = 'none';
+        attachedFiles.clear();
+        console.log('New chat started, conversation ID reset.');
+        // The actual conversation record will be created by the backend
+        // when the first message is sent with conversation_id = null.
     });
 
     // Función para agregar un mensaje al contenedor con animación
@@ -161,8 +221,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const textDiv = document.createElement('div');
         textDiv.className = 'message-text';
         
-        // Verificar si el contenido incluye una imagen generada (formato especial)
+        // Check for special markers (images, videos)
         const hasGeneratedImage = !isUser && content.includes('[GENERATED_IMAGE:');
+        const hasGeneratedVideo = !isUser && content.includes('[GENERATED_VIDEO:');
+
         if (hasGeneratedImage) {
             // Extraer la URL de la imagen
             const imgMatch = content.match(/\[GENERATED_IMAGE:([^\]]+)\]/);
@@ -184,6 +246,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Añadir la imagen al contenedor
                 imageContainer.appendChild(img);
                 bubbleDiv.appendChild(imageContainer);
+            }
+        }
+
+        // Handle generated video display
+        if (hasGeneratedVideo) {
+            const videoMatch = content.match(/\[GENERATED_VIDEO:([^\)]+)\]/g);
+            if (videoMatch) {
+                content = content.replace(/\[GENERATED_VIDEO:[^\)]+\]/g, '').trim(); // Remove markers
+
+                videoMatch.forEach(match => {
+                    const videoUrl = match.slice('[GENERATED_VIDEO:'.length, -1);
+                    const videoContainer = document.createElement('div');
+                    videoContainer.className = 'generated-video';
+
+                    const videoElement = document.createElement('video');
+                    videoElement.src = videoUrl;
+                    videoElement.controls = true;
+                    videoElement.preload = 'metadata';
+                    videoElement.style.maxWidth = '100%';
+                    videoElement.style.borderRadius = '8px';
+                    videoElement.style.marginTop = '10px';
+
+                    videoContainer.appendChild(videoElement);
+                    bubbleDiv.appendChild(videoContainer);
+                });
             }
         }
 
@@ -326,151 +413,41 @@ document.addEventListener('DOMContentLoaded', () => {
     // Manejar las respuestas del socket
     socket.on('message', (data) => {
         console.log("Mensaje recibido:", data); // Para depuración
-        
-        // Ocultar el indicador de carga
+
         const loadingIndicator = document.querySelector('.loading-indicator');
         if (loadingIndicator) {
             loadingIndicator.remove();
         }
 
-        // Eliminar el contenedor de progreso si existe
         const progressContainer = document.querySelector('.progress-container');
-        if (progressContainer) {
-            progressContainer.remove();
+
+        // Si es un mensaje final de streaming (done: true) y había un contenedor de progreso
+        if (data.done && progressContainer) {
+            // Finalizar el mensaje en progreso, no añadir uno nuevo si el contenido está vacío
+            progressContainer.classList.remove('progress-container'); // Quitar clase de progreso
+            // No hacer nada más si data.content está vacío, el contenido ya está en progressContainer
+            if (data.content) { // Si el mensaje final tiene contenido (caso no-streaming o error)
+                 progressContainer.remove(); // Eliminar el contenedor de progreso si existía
+                 addMessage(data.content, false); // Añadir el contenido final como mensaje normal
+            }
+        } else if (data.role === 'assistant' && data.content) {
+            // Mensaje normal (no streaming) o error con contenido
+            if (progressContainer) {
+                progressContainer.remove(); // Limpiar si había progreso anterior
+            }
+            addMessage(data.content, false);
+        } else if (data.role === 'user' && data.content) {
+            // Los mensajes del usuario ya se añaden en sendMessage
+            // No hacer nada aquí para evitar duplicados
+        } else if (data.error) {
+            // Mostrar mensaje de error del sistema
+            if (progressContainer) {
+                progressContainer.remove();
+            }
+            addMessage(`Error del servidor: ${data.error}`, false);
         }
 
-        // Crear contenedor principal del mensaje
-        const messageContainerDiv = document.createElement('div');
-        messageContainerDiv.className = 'message ' + (data.role === 'user' ? 'user-message' : 'assistant-message');
-
-        // Crear la burbuja del mensaje
-        const bubbleDiv = document.createElement('div');
-        bubbleDiv.className = 'message-bubble';
-
-        // --- Lógica para mostrar texto o imagen ---
-        if (data.type === 'image_url' && data.content && data.role === 'assistant') {
-            // Es una URL de imagen generada
-            const imgContainer = document.createElement('div');
-            imgContainer.className = 'image-container';
-            
-            // Crear indicador de carga para la imagen
-            const loadingIndicator = document.createElement('div');
-            loadingIndicator.className = 'image-loading-indicator';
-            loadingIndicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cargando imagen...';
-            imgContainer.appendChild(loadingIndicator);
-            
-            // Crear elemento de imagen
-            const imgElement = document.createElement('img');
-            imgElement.src = data.content; // La URL está en 'content'
-            imgElement.alt = "Imagen generada por IA";
-            imgElement.className = 'generated-image';
-            imgElement.style.display = 'none'; // Ocultar hasta que cargue
-            
-            // Cuando la imagen carga correctamente
-            imgElement.onload = () => {
-                // Ocultar indicador de carga
-                loadingIndicator.style.display = 'none';
-                // Mostrar la imagen
-                imgElement.style.display = 'block';
-                // Hacer scroll
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-            
-            // Manejar error si la URL no carga
-            imgElement.onerror = () => {
-                loadingIndicator.style.display = 'none';
-                const errorMsg = document.createElement('div');
-                errorMsg.className = 'image-error-message';
-                errorMsg.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error al cargar la imagen generada';
-                imgContainer.appendChild(errorMsg);
-            }
-            
-            imgContainer.appendChild(imgElement);
-            bubbleDiv.appendChild(imgContainer);
-        } else if (data.type === 'text' || !data.type || data.role === 'user') {
-            // Es un mensaje de texto (del usuario o del asistente) o un error como texto
-            if (data.role === 'assistant' && data.content) {
-                // Usar la función existente de animación de escritura
-                const textDiv = document.createElement('div');
-                textDiv.className = 'message-text';
-                
-                // Dividir el contenido en palabras manteniendo los espacios
-                const words = data.content.split(/(s+)/);
-                let delay = 0;
-                
-                words.forEach((word) => {
-                    const wordSpan = document.createElement('span');
-                    wordSpan.style.display = 'inline-block';
-                    
-                    // Si es un espacio, lo agregamos directamente
-                    if (/^\s+$/.test(word)) {
-                        wordSpan.textContent = word;
-                        textDiv.appendChild(wordSpan);
-                        return;
-                    }
-                    
-                    // Para cada carácter en la palabra
-                    Array.from(word).forEach((char) => {
-                        const span = document.createElement('span');
-                        span.textContent = char;
-                        span.className = 'char';
-                        span.style.animationDelay = `${delay}ms`;
-                        
-                        // Ajustar la velocidad de la animación según la longitud del mensaje
-                        if (data.content.length < 50) {
-                            span.classList.add('short');
-                            delay += 30;
-                        } else if (data.content.length < 200) {
-                            span.classList.add('medium');
-                            delay += 20;
-                        } else {
-                            span.classList.add('long');
-                            delay += 10;
-                        }
-                        
-                        wordSpan.appendChild(span);
-                    });
-                    
-                    textDiv.appendChild(wordSpan);
-                });
-                
-                bubbleDiv.appendChild(textDiv);
-            } else if (data.role === 'user' && data.content) {
-                const textDiv = document.createElement('div');
-                textDiv.className = 'message-text';
-                textDiv.textContent = data.content;
-                bubbleDiv.appendChild(textDiv);
-            } else if (data.error) {
-                const textDiv = document.createElement('div');
-                textDiv.className = 'message-text';
-                textDiv.textContent = data.error;
-                bubbleDiv.appendChild(textDiv);
-            } else {
-                // Manejar caso de contenido vacío o inesperado
-                const textDiv = document.createElement('div');
-                textDiv.className = 'message-text';
-                textDiv.textContent = "[Mensaje vacío o inesperado]";
-                bubbleDiv.appendChild(textDiv);
-                console.warn("Mensaje recibido sin contenido de texto:", data);
-            }
-        } else {
-            // Tipo de mensaje no reconocido
-            const textDiv = document.createElement('div');
-            textDiv.className = 'message-text';
-            textDiv.textContent = "[Tipo de mensaje no soportado]";
-            bubbleDiv.appendChild(textDiv);
-            console.error("Tipo de mensaje no reconocido:", data);
-        }
-        // --- Fin de la lógica ---
-
-        messageContainerDiv.appendChild(bubbleDiv);
-        messagesContainer.appendChild(messageContainerDiv);
-        
-        // Hacer scroll solo después de añadir el elemento
-        // y potencialmente después de que la imagen cargue (ver onload de img)
-        if (data.type !== 'image_url') { // Scroll inmediato para texto
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-        }
+        // El scroll al último mensaje ya se maneja dentro de addMessage o al actualizar progreso
     });
 
     // Manejar actualizaciones de progreso para respuestas en streaming
@@ -486,14 +463,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             progressContainer = document.createElement('div');
-            progressContainer.className = 'message assistant-message progress-container';
+            progressContainer.className = 'message assistant-message progress-container'; // Añadir clase progress-container
             
             const bubbleDiv = document.createElement('div');
             bubbleDiv.className = 'message-bubble';
             
             const textDiv = document.createElement('div');
-            textDiv.className = 'message-text progress-text';
-            textDiv.textContent = '';
+            textDiv.className = 'message-text progress-text'; // Usar clase específica para el texto en progreso
+            textDiv.textContent = ''; // Iniciar vacío
             
             bubbleDiv.appendChild(textDiv);
             progressContainer.appendChild(bubbleDiv);
@@ -502,7 +479,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Actualizar el contenido del contenedor de progreso
         const textDiv = progressContainer.querySelector('.progress-text');
-        textDiv.textContent += data.content;
+        if (textDiv) { // Asegurarse que textDiv existe
+             textDiv.textContent += data.content;
+        }
         
         // Scroll al final
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
@@ -526,75 +505,86 @@ document.addEventListener('DOMContentLoaded', () => {
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    async function sendMessage() {
-        const message = userInput.value.trim();
-        
-        if (message === '' && attachedFiles.size === 0) return;
-        
-        try {
-            // Convertir archivos a base64
-            const base64Files = [];
-            for (const [fileId, file] of attachedFiles) {
-                const base64 = await new Promise((resolve) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result);
-                    reader.readAsDataURL(file);
-                });
-                base64Files.push(base64);
+    // Función para enviar mensajes
+    function sendMessage() {
+        const messageText = userInput.value.trim();
+        const selectedModel = modelSelector.value;
+
+        if (!messageText && attachedFiles.size === 0) return;
+
+        // Mostrar mensaje del usuario inmediatamente
+        addMessage(messageText, true);
+
+        // Mostrar indicador de carga
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.className = 'message assistant-message loading-indicator';
+        loadingIndicator.innerHTML = `
+            <div class="message-bubble">
+                <div class="typing-indicator">
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+        `;
+        messagesContainer.appendChild(loadingIndicator);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // Preparar datos para enviar
+        const formData = new FormData();
+        formData.append('message', messageText);
+        formData.append('model', selectedModel);
+        formData.append('conversation_id', currentConversationId);
+        formData.append('web_search', isWebSearchMode);
+
+        // Añadir parámetros de video si el modelo es kkty2-video
+        if (selectedModel === 'kkty2-video') {
+            // Leer valores de los nuevos controles
+            const duration = videoDurationSelect.value;
+            const aspect = videoAspectSelect.value;
+            const count = videoCountInput.value;
+
+            formData.append('durationSeconds', duration);
+            formData.append('numberOfVideos', count);
+            formData.append('video_aspect_ratio', aspect); // Añadir aspect ratio
+            console.log(`Enviando parámetros de video: Duración=${duration}s, Cantidad=${count}, Aspecto=${aspect}`);
+        }
+
+        // Añadir archivos adjuntos
+        attachedFiles.forEach((file, fileId) => {
+            formData.append('attachments', file, file.name);
+        });
+
+        // Enviar datos al backend
+        fetch('/chat', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.error || 'Error en la respuesta del servidor'); });
             }
-
-            // Crear y mostrar la vista previa del mensaje del usuario
-            const messagePreview = createMessagePreview(message, attachedFiles);
-            messagesContainer.appendChild(messagePreview);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
-
-            // Mostrar indicador de carga
-            showLoadingIndicator();
-
-            // Emitir el mensaje y los archivos
-            // Get the current model from the selector element
-            const modelSelector = document.getElementById('model-selector');
-            const modelValue = modelSelector ? modelSelector.value : 'gemini';
-            
-            // Verificar si es una solicitud de generación o edición de imagen
-            const isImageGeneration = modelValue === 'gemini-flash';
-            
-            // Determinar si es una solicitud de edición de imagen
-            // (cuando hay archivos adjuntos y el modelo es gemini-flash)
-            const isImageEdit = isImageGeneration && attachedFiles.size > 0;
-            
-            socket.emit('message', {
-                message: message,
-                conversationId: currentConversationId,
-                videoMode: isVideoMode,
-                webSearch: isWebSearchMode,
-                hasAttachments: attachedFiles.size > 0,
-                files: base64Files,
-                model: modelValue,
-                isImageGeneration: isImageGeneration,
-                isImageEdit: isImageEdit
-            });
-            
-            // Limpiar la entrada y los archivos adjuntos
-            userInput.value = '';
-            userInput.style.height = 'auto';
-            attachedFiles.clear();
-            attachmentsPreview.innerHTML = '';
-            attachmentsPreview.style.display = 'none';
-            
-        } catch (error) {
-            console.error('Error al enviar el mensaje:', error);
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'message system-message error';
-            errorDiv.textContent = 'Error al enviar el mensaje. Por favor, intenta de nuevo.';
-            messagesContainer.appendChild(errorDiv);
-            
-            // Ocultar el indicador de carga si hay error
-            const loadingIndicator = document.querySelector('.loading-indicator');
+            return response.json();
+        })
+        .then(data => {
+            console.log('Respuesta del servidor recibida:', data);
+            // El manejo de la respuesta del asistente se hace a través de Socket.IO
+            // Ocultar indicador de carga (se hará cuando llegue el mensaje por socket)
+        })
+        .catch(error => {
+            console.error('Error enviando mensaje:', error);
+            // Ocultar indicador de carga en caso de error
             if (loadingIndicator) {
                 loadingIndicator.remove();
             }
-        }
+            // Mostrar mensaje de error al usuario
+            addMessage(`Error: ${error.message}`, false);
+        });
+
+        // Limpiar input y archivos adjuntos
+        userInput.value = '';
+        attachedFiles.clear();
+        attachmentsPreview.innerHTML = '';
+        attachmentsPreview.style.display = 'none';
+        userInput.style.height = 'auto'; // Reset height after sending
     }
 
     // Función para crear una vista previa del mensaje con imágenes

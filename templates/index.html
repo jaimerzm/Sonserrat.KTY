@@ -86,6 +86,18 @@
             </div>
 
             <div class="chat-input-container">
++               <div class="video-options" id="video-options" style="display: none;">
++                   <div class="video-option">
++                       <label for="video-duration">Duración (s):</label>
++                       <input type="range" id="video-duration" name="video-duration" min="5" max="8" value="5">
++                       <span id="duration-value">5s</span>
++                   </div>
++                   <div class="video-option">
++                       <label for="video-count">Número de videos:</label>
++                       <input type="range" id="video-count" name="video-count" min="1" max="4" value="1">
++                       <span id="count-value">1</span>
++                   </div>
++               </div>
                 <div class="input-indicators">
                     <div class="model-indicator">
                         <i class="fas fa-robot"></i>
@@ -106,6 +118,28 @@
                 <form id="chat-form" class="chat-form">
                     <div class="attachments-preview" id="attachments-preview">
                         <!-- Las miniaturas se mostrarán aquí -->
+                    </div>
+                    <div class="video-controls">
+                      <label>
+                        Duración:
+                        <select id="video-duration">
+                          <option value="5">5 s</option>
+                          <option value="6">6 s</option>
+                          <option value="7">7 s</option>
+                          <option value="8">8 s</option>
+                        </select>
+                      </label>
+                      <label>
+                        Aspecto:
+                        <select id="video-aspect">
+                          <option value="16:9">16:9</option>
+                          <option value="9:16">9:16</option>
+                        </select>
+                      </label>
+                      <label>
+                        Cantidad:
+                        <input id="video-count" type="number" min="1" max="4" value="1"/>
+                      </label>
                     </div>
                     <div class="input-wrapper">
                         <textarea 

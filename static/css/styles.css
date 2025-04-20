@@ -398,7 +398,48 @@ body {
 }
 
 .action-button:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(0, 0, 0, 0.05); /* Completar regla existente */
+    color: var(--accent-color);
+}
+
+/* Estilos para los controles de vídeo */
+.video-controls {
+  display: none; /* Oculto por defecto */
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
+  padding: 0 10px; /* Añadir algo de padding */
+  flex-wrap: wrap; /* Permitir que los controles se envuelvan en pantallas pequeñas */
+  animation: slideInUp 0.3s ease forwards; /* Animación */
+}
+
+.video-controls.visible {
+    display: flex; /* Mostrar cuando sea visible */
+}
+
+.video-controls label {
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column; /* Apilar etiqueta y control */
+  align-items: flex-start; /* Alinear a la izquierda */
+  color: var(--text-secondary);
+}
+
+.video-controls select,
+.video-controls input[type="number"] {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  margin-top: 2px; /* Espacio entre etiqueta y control */
+  max-width: 80px; /* Limitar ancho */
+}
+
+.video-controls input[type="number"] {
+    width: 60px; /* Ancho específico para el input numérico */
+} 0, 0.05);
     color: var(--accent-color);
 }
 
@@ -584,6 +625,54 @@ body {
     gap: 0.5rem;
 }
 
+.video-options {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: var(--dropdown-bg);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border-color);
+    animation: slideInUp 0.3s ease-out;
+}
+
+.video-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.video-option label {
+    font-weight: 500;
+}
+
+.video-option input[type="range"] {
+    cursor: pointer;
+    width: 80px; /* Ajusta el ancho según sea necesario */
+    accent-color: var(--accent-color);
+}
+
+.video-option span {
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 25px; /* Asegura espacio para el valor */
+    text-align: right;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .input-indicators {
     display: flex;
     justify-content: space-between;
@@ -680,7 +769,48 @@ textarea:focus {
 }
 
 .action-button:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(0, 0, 0, 0.05); /* Completar regla existente */
+    color: var(--accent-color);
+}
+
+/* Estilos para los controles de vídeo */
+.video-controls {
+  display: none; /* Oculto por defecto */
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
+  padding: 0 10px; /* Añadir algo de padding */
+  flex-wrap: wrap; /* Permitir que los controles se envuelvan en pantallas pequeñas */
+  animation: slideInUp 0.3s ease forwards; /* Animación */
+}
+
+.video-controls.visible {
+    display: flex; /* Mostrar cuando sea visible */
+}
+
+.video-controls label {
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column; /* Apilar etiqueta y control */
+  align-items: flex-start; /* Alinear a la izquierda */
+  color: var(--text-secondary);
+}
+
+.video-controls select,
+.video-controls input[type="number"] {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  margin-top: 2px; /* Espacio entre etiqueta y control */
+  max-width: 80px; /* Limitar ancho */
+}
+
+.video-controls input[type="number"] {
+    width: 60px; /* Ancho específico para el input numérico */
+} 0, 0.05);
     color: var(--accent-color);
 }
 
@@ -1629,6 +1759,54 @@ textarea:focus {
     gap: 0.5rem;
 }
 
+.video-options {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: var(--dropdown-bg);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border-color);
+    animation: slideInUp 0.3s ease-out;
+}
+
+.video-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.video-option label {
+    font-weight: 500;
+}
+
+.video-option input[type="range"] {
+    cursor: pointer;
+    width: 80px; /* Ajusta el ancho según sea necesario */
+    accent-color: var(--accent-color);
+}
+
+.video-option span {
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 25px; /* Asegura espacio para el valor */
+    text-align: right;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .input-indicators {
     display: flex;
     justify-content: space-between;
@@ -1725,7 +1903,48 @@ textarea:focus {
 }
 
 .action-button:hover {
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: rgba(0, 0, 0, 0.05); /* Completar regla existente */
+    color: var(--accent-color);
+}
+
+/* Estilos para los controles de vídeo */
+.video-controls {
+  display: none; /* Oculto por defecto */
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
+  padding: 0 10px; /* Añadir algo de padding */
+  flex-wrap: wrap; /* Permitir que los controles se envuelvan en pantallas pequeñas */
+  animation: slideInUp 0.3s ease forwards; /* Animación */
+}
+
+.video-controls.visible {
+    display: flex; /* Mostrar cuando sea visible */
+}
+
+.video-controls label {
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column; /* Apilar etiqueta y control */
+  align-items: flex-start; /* Alinear a la izquierda */
+  color: var(--text-secondary);
+}
+
+.video-controls select,
+.video-controls input[type="number"] {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  margin-top: 2px; /* Espacio entre etiqueta y control */
+  max-width: 80px; /* Limitar ancho */
+}
+
+.video-controls input[type="number"] {
+    width: 60px; /* Ancho específico para el input numérico */
+} 0, 0.05);
     color: var(--accent-color);
 }
 
@@ -2674,6 +2893,54 @@ textarea:focus {
     gap: 0.5rem;
 }
 
+.video-options {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    padding: 0.5rem 1rem;
+    background: var(--dropdown-bg);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border-color);
+    animation: slideInUp 0.3s ease-out;
+}
+
+.video-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.video-option label {
+    font-weight: 500;
+}
+
+.video-option input[type="range"] {
+    cursor: pointer;
+    width: 80px; /* Ajusta el ancho según sea necesario */
+    accent-color: var(--accent-color);
+}
+
+.video-option span {
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 25px; /* Asegura espacio para el valor */
+    text-align: right;
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .input-indicators {
     display: flex;
     justify-content: space-between;
@@ -2770,5 +3037,46 @@ textarea:focus {
 }
 
 .action-button:hover {
-    background-color: rgba(0, 0,
+    background-color: rgba(0, 0, 0, 0.05); /* Completar regla existente */
+    color: var(--accent-color);
+}
+
+/* Estilos para los controles de vídeo */
+.video-controls {
+  display: none; /* Oculto por defecto */
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  align-items: center;
+  padding: 0 10px; /* Añadir algo de padding */
+  flex-wrap: wrap; /* Permitir que los controles se envuelvan en pantallas pequeñas */
+  animation: slideInUp 0.3s ease forwards; /* Animación */
+}
+
+.video-controls.visible {
+    display: flex; /* Mostrar cuando sea visible */
+}
+
+.video-controls label {
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column; /* Apilar etiqueta y control */
+  align-items: flex-start; /* Alinear a la izquierda */
+  color: var(--text-secondary);
+}
+
+.video-controls select,
+.video-controls input[type="number"] {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  margin-top: 2px; /* Espacio entre etiqueta y control */
+  max-width: 80px; /* Limitar ancho */
+}
+
+.video-controls input[type="number"] {
+    width: 60px; /* Ancho específico para el input numérico */
+}
 }

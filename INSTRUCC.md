@@ -1,122 +1,153 @@
-# AI Chatbot con Google Gemini y Groq
+Generar imágenes
 
-Una aplicación web moderna y minimalista que implementa un chatbot utilizando los modelos de IA de Google Gemini y Groq. La aplicación cuenta con un diseño limpio inspirado en Apple con una interfaz responsive.
+La API de Gemini admite la generación de imágenes con Gemini 2.0 Flash Experimental y con Imagen 3. Esta guía te ayuda a comenzar a usar ambos modelos.
 
-## Características
+Antes de comenzar
+Antes de llamar a la API de Gemini, asegúrate de tener instalado el SDK que elijas y de que una clave de API de Gemini esté configurada y lista para usar.
 
-- Interfaz de chat en tiempo real con WebSockets
-- Potenciado por Google Gemini AI y Groq
-- Procesamiento de imágenes y generación de contenido visual
-- Diseño moderno y responsive
-- Interfaz de usuario limpia e intuitiva
-- Entrada de texto autoexpandible
-- Animaciones y transiciones suaves
-- Autenticación de usuarios (incluido inicio de sesión con Google)
+Genera imágenes con Gemini
+Gemini 2.0 Flash Experimental admite la capacidad de generar texto y líneas de imágenes. Esto te permite usar Gemini para editar imágenes de forma conversacional o generar resultados con texto entretejido (por ejemplo, generar una entrada de blog con texto e imágenes en una sola vuelta). Todas las imágenes generadas incluyen una marca de agua de SynthID, y las imágenes de Google AI Studio también incluyen una marca de agua visible.
 
-## Requisitos previos
+Nota: Asegúrate de incluir responseModalities: ["TEXT", "IMAGE"] en la configuración de generación para la salida de texto e imagen con gemini-2.0-flash-exp-image-generation. No se permite solo la imagen.
+En el siguiente ejemplo, se muestra cómo usar Gemini 2.0 para generar resultados de texto y de imagen:
 
-- Python 3.12 o superior
-- Clave API de Google Gemini
-- Clave API de Groq (opcional)
-- Navegador web moderno
+Python
+JavaScript
+REST
 
-## Instalación local
+from google import genai
+from google.genai import types
+from PIL import Image
+from io import BytesIO
+import base64
 
-1. Clona el repositorio
-2. Crea un entorno virtual:
-   ```
-   python -m venv venv
-   ```
-3. Activa el entorno virtual:
-   - Windows: `venv\Scripts\activate`
-   - Linux/Mac: `source venv/bin/activate`
-4. Instala las dependencias requeridas:
-   ```
-   pip install -r requirements.txt
-   ```
-5. Crea un archivo `.env` y añade tus claves API:
-   ```
-   GOOGLE_API_KEY=tu_clave_api_gemini_aquí
-   GROQ_API_KEY=tu_clave_api_groq_aquí
-   SECRET_KEY=clave_secreta_para_flask
-   GOOGLE_CLIENT_ID=tu_id_cliente_google_oauth
-   GOOGLE_CLIENT_SECRET=tu_secreto_cliente_google_oauth
-   ```
+client = genai.Client()
 
-## Ejecución local
+contents = ('Hi, can you create a 3d rendered image of a pig '
+            'with wings and a top hat flying over a happy '
+            'futuristic scifi city with lots of greenery?')
 
-1. Inicia el servidor Flask:
-   ```
-   python app.py
-   ```
-2. Abre tu navegador y navega a:
-   ```
-   http://localhost:5000
-   ```
+response = client.models.generate_content(
+    model="gemini-2.0-flash-exp-image-generation",
+    contents=contents,
+    config=types.GenerateContentConfig(
+      response_modalities=['TEXT', 'IMAGE']
+    )
+)
 
-## Despliegue en Render.com
+for part in response.candidates[0].content.parts:
+  if part.text is not None:
+    print(part.text)
+  elif part.inline_data is not None:
+    image = Image.open(BytesIO((part.inline_data.data)))
+    image.save('gemini-native-image.png')
+    image.show()
+Imagen generada por IA de un cerdo volador fantástico
+Imagen generada por IA de un cerdo volador fantástico
+Según la instrucción y el contexto, Gemini generará contenido en diferentes modos (texto a imagen, texto a imagen y texto, etcétera). Estos son algunos ejemplos:
 
-### Configuración para Render.com
+Texto a imagen
+Ejemplo de instrucción: “Genera una imagen de la Torre Eiffel con fuegos artificiales en el fondo”.
+Texto a imágenes y texto (intercalado)
+Ejemplo de instrucción: "Genera una receta ilustrada de una paella".
+De imágenes y texto a imágenes y texto (intercalados)
+Ejemplo de instrucción: (Con una imagen de una habitación amueblada) “¿Qué otros colores de sofás funcionarían en mi espacio? ¿Puedes actualizar la imagen?”
+Edición de imágenes (texto e imagen a imagen)
+Ejemplo de instrucción: “Edita esta imagen para que parezca un dibujo animado”.
+Ejemplo de instrucción: [imagen de un gato] + [imagen de una almohada] + “Crea un bordado de mi gato en esta almohada”.
+Edición de imágenes de varios turnos (chat)
+Ejemplos de instrucciones: [Sube una imagen de un auto azul.] "Convierte este auto en un convertible". “Ahora cambia el color a amarillo”.
+Edición de imágenes con Gemini
+Para editar una imagen, agrega una como entrada. En el siguiente ejemplo, se muestra cómo subir imágenes codificadas en base64. Para varias imágenes y cargas útiles más grandes, consulta la sección entrada de imagen.
 
-La aplicación está lista para ser desplegada en Render.com. Los archivos de configuración necesarios ya están incluidos:
+Python
+JavaScript
+REST
 
-- **Procfile**: Configura el servidor web Gunicorn con soporte para WebSockets.
-- **requirements.txt**: Lista todas las dependencias necesarias.
-- **runtime.txt**: Especifica la versión de Python a utilizar.
+from google import genai
+from google.genai import types
+from PIL import Image
+from io import BytesIO
 
-### Pasos para desplegar en Render.com
+import PIL.Image
 
-1. Crea una cuenta en [Render.com](https://render.com) si aún no tienes una.
-2. Haz clic en "New" y selecciona "Web Service".
-3. Conecta tu repositorio de GitHub o sube el código directamente.
-4. Configura el servicio con los siguientes ajustes:
-   - **Name**: Nombre de tu aplicación
-   - **Runtime**: Python
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn -c gunicorn_config.py wsgi:app`
-5. En la sección "Environment Variables", añade las siguientes variables:
-   - `GOOGLE_API_KEY`: Tu clave de API de Google Gemini
-   - `GROQ_API_KEY`: Tu clave de API de Groq
-   - `SECRET_KEY`: Una clave secreta para Flask
-   - `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`: Para autenticación con Google
-   - `RENDER=true`: Para indicar que está en entorno de producción
+image = PIL.Image.open('/path/to/image.png')
 
-## Estructura del proyecto
+client = genai.Client()
 
-```
-.
-├── app.py              # Aplicación principal Flask
-├── auth.py             # Gestión de autenticación
-├── models.py           # Modelos de base de datos
-├── requirements.txt    # Dependencias Python
-├── Procfile            # Configuración para Render.com
-├── runtime.txt         # Versión de Python para Render.com
-├── .env                # Variables de entorno (no incluir en repositorio)
-├── instance/           # Base de datos SQLite y archivos de instancia
-├── uploads/            # Directorio para archivos subidos e imágenes generadas
-├── templates/          # Plantillas HTML
-└── static/
-    ├── css/            # Hojas de estilo
-    ├── js/             # JavaScript del frontend
-    └── src/            # Código fuente para componentes frontend
-```
+text_input = ('Hi, This is a picture of me.'
+            'Can you add a llama next to me?',)
 
-## Notas de seguridad
+response = client.models.generate_content(
+    model="gemini-2.0-flash-exp-image-generation",
+    contents=[text_input, image],
+    config=types.GenerateContentConfig(
+      response_modalities=['TEXT', 'IMAGE']
+    )
+)
 
-- Nunca incluyas tu archivo `.env` o expongas tus claves API en el repositorio
-- La aplicación utiliza protección CORS
-- Todas las entradas de usuario son sanitizadas antes de procesarse
-- En Render.com, utiliza variables de entorno para todas las claves y secretos
+for part in response.candidates[0].content.parts:
+  if part.text is not None:
+    print(part.text)
+  elif part.inline_data is not None:
+    image = Image.open(BytesIO(part.inline_data.data))
+    image.show()
+Limitaciones
+Para obtener el mejor rendimiento, usa los siguientes idiomas: EN, es-MX, ja-JP, zh-CN, hi-IN.
+La generación de imágenes no admite entradas de audio ni video.
+Es posible que la generación de imágenes no siempre active lo siguiente:
+El modelo solo puede generar texto. Intenta solicitar resultados de imagen de forma explícita (p.ej., “genera una imagen”, “proporciona imágenes a medida que avanzas”, “actualiza la imagen”).
+Es posible que el modelo deje de generar contenido a mitad del proceso. Vuelve a intentarlo o prueba con otra instrucción.
+Cuando generas texto para una imagen, Gemini funciona mejor si primero generas el texto y, luego, le pides una imagen con el texto.
+Elige un modelo
+¿Qué modelo deberías usar para generar imágenes? Depende de tu caso de uso.
 
-## Notas importantes para Render.com
+Gemini 2.0 es mejor para producir imágenes contextualmente relevantes, combinar texto y imágenes, incorporar el conocimiento del mundo y razonar sobre las imágenes. Puedes usarlo para crear imágenes precisas y contextualmente relevantes incorporadas en secuencias de texto largas. También puedes editar imágenes de forma conversacional, con lenguaje natural, y mantener el contexto durante la conversación.
 
-- La aplicación está configurada para detectar automáticamente si está ejecutándose en Render.com
-- En producción, Render gestionará el servidor Gunicorn según la configuración del Procfile
-- El directorio `uploads/` debe tener permisos de escritura para almacenar imágenes generadas
-- Si necesitas una base de datos más robusta, considera usar PostgreSQL en lugar de SQLite:
-  1. Crea un servicio de base de datos PostgreSQL en Render
-  2. Actualiza la variable de entorno `DATABASE_URL` con la URL proporcionada por Render
+Si la calidad de la imagen es tu prioridad, Imagen 3 es una mejor opción. La imagen 3 se destaca por su fotorrealismo, sus detalles artísticos y sus estilos artísticos específicos, como el impresionismo o el anime. Imagen 3 también es una buena opción para tareas especializadas de edición de imágenes, como actualizar los fondos de los productos, mejorar las imágenes y aplicar el desarrollo de la marca y el estilo a las imágenes. Puedes usar Imagen 3 para crear logotipos o cualquier otro diseño de producto de marca.
 
-## Licencia
+Genera imágenes con Imagen 3
+La API de Gemini proporciona acceso a Imagen 3, el modelo de texto a imagen de mayor calidad de Google, que incluye varias funciones nuevas y mejoradas. Imagen 3 puede hacer lo siguiente:
 
-MIT License
+Genera imágenes con mejores detalles, iluminación más rica y menos artefactos que distraen que los modelos anteriores.
+Comprender instrucciones escritas en lenguaje natural
+Genera imágenes en una amplia variedad de formatos y estilos
+Renderiza el texto de forma más eficaz que los modelos anteriores.
+Nota: Imagen 3 solo está disponible en el nivel pagado y siempre incluye una marca de agua de SynthID.
+Python
+JavaScript
+REST
+
+from google import genai
+from google.genai import types
+from PIL import Image
+from io import BytesIO
+
+client = genai.Client(api_key='GEMINI_API_KEY')
+
+response = client.models.generate_images(
+    model='imagen-3.0-generate-002',
+    prompt='Robot holding a red skateboard',
+    config=types.GenerateImagesConfig(
+        number_of_images= 4,
+    )
+)
+for generated_image in response.generated_images:
+  image = Image.open(BytesIO(generated_image.image.image_bytes))
+  image.show()
+Imagen generada por IA de dos conejos peludos en la cocina
+Imagen generada por IA de dos conejos peludos en la cocina
+Por el momento, Imagen solo admite instrucciones en inglés y los siguientes parámetros:
+
+Parámetros del modelo de Imagen
+(Las convenciones de nombres varían según el lenguaje de programación).
+
+numberOfImages: Es la cantidad de imágenes que se generarán, de 1 a 4 (inclusive). El valor predeterminado es 4.
+aspectRatio: Cambia la relación de aspecto de la imagen generada. Los valores admitidos son "1:1", "3:4", "4:3", "9:16" y "16:9". El valor predeterminado es "1:1".
+personGeneration: Permite que el modelo genere imágenes de personas. Se admiten los siguientes valores:
+"DONT_ALLOW": Bloquea la generación de imágenes de personas.
+"ALLOW_ADULT": Genera imágenes de adultos, pero no de niños. Es el valor predeterminado.
+¿Qué sigue?
+Si deseas obtener más información sobre cómo escribir instrucciones para Imagen, consulta la guía de instrucciones de Imagen.
+Para obtener más información sobre los modelos de Gemini 2.0, consulta Modelos de Gemini y Modelos experimentales.
+¿Te resultó útil?
