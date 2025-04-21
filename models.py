@@ -49,14 +49,3 @@ class Message(db.Model):
 
     def __repr__(self):
         return f'<Message {self.id}>'
-
-class GeneratedVideo(db.Model):
-    id = sa.Column(sa.Integer, primary_key=True)
-    user_id = sa.Column(sa.Integer, sa.ForeignKey('user.id'), nullable=True) # Permitir videos de invitados
-    prompt = sa.Column(sa.Text, nullable=False)
-    video_url = sa.Column(sa.String(500), nullable=False) # URL donde se almacena el video
-    created_at = sa.Column(sa.DateTime, default=datetime.utcnow)
-    user = relationship('User') # Relación opcional para acceder al usuario
-
-    def __repr__(self):
-        return f'<GeneratedVideo {self.id} by User {self.user_id}>'
