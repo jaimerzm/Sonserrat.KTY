@@ -73,21 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Visibilidad de Controles de Video (NUEVO) ---
     function updateVideoControlsVisibility() {
-        const selectedModelValue = modelSelector.value;
-        // *** Añadir este log para depurar ***
-        console.log('updateVideoControlsVisibility: Modelo seleccionado (valor del select oculto) =', selectedModelValue);
-
-        const videoControlsElement = document.querySelector('.video-controls');
-        if (videoControlsElement) {
-             if (selectedModelValue === 'kkty2-video') {
-                 console.log('Mostrando controles de video...'); // Log
-                 videoControlsElement.classList.add('visible');
-             } else {
-                 console.log('Ocultando controles de video...'); // Log
-                 videoControlsElement.classList.remove('visible');
-             }
+        const selectedModel = modelSelector.value;
+        if (selectedModel === 'kkty2-video') {
+            videoControlsDiv.classList.add('visible');
         } else {
-            console.warn("Elemento '.video-controls' no encontrado.");
+            videoControlsDiv.classList.remove('visible');
         }
     }
 
@@ -690,24 +680,4 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cargar conversaciones al inicio
     loadConversations();
 });
-
-function handleModelChange() {
-    const selectedModelValue = modelSelector.value;
-    // *** Añadir este log para depurar ***
-    console.log('handleModelChange: Modelo seleccionado (valor del select oculto) =', selectedModelValue);
-
-    const videoControlsElement = document.querySelector('.video-controls');
-    if (videoControlsElement) {
-         if (selectedModelValue === 'kkty2-video') {
-             console.log('Mostrando controles de video...'); // Log
-             videoControlsElement.classList.add('visible');
-         } else {
-             console.log('Ocultando controles de video...'); // Log
-             videoControlsElement.classList.remove('visible');
-         }
-    } else {
-        console.warn("Elemento '.video-controls' no encontrado.");
-    }
-    // ... resto de la función ...
-}
 

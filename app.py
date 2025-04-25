@@ -126,34 +126,17 @@ try:
         logger.error(f"Error configurando modelo de generación de imágenes: {e}")
         image_gen_model = None
 
-    genai_client = None # Inicializar a None
-    model_veo = "veo-2.0-generate-001" # Almacenar nombre del modelo
-
-    # --- Inicializar genai.Client AHORA ---
-    try:
-        genai_client = genai.Client() # Asegurar que esta línea está descomentada
-        logger.info(f"Cliente Google AI (genai.Client) configurado para Veo '{model_veo}'.")
-    except Exception as client_err:
-        logger.error(f"Error configurando genai.Client: {client_err}", exc_info=True)
-        genai_client = None # Asegurar que es None si falla
+    # Cliente Google AI (genai.Client) no se usa directamente aquí.
+    # La inicialización del modelo principal (texto/imagen) se hace arriba.
+    genai_client = None # Mantener como None si Veo 2 no está activo/configurado
 
     # Initialize chat instance (para el modelo de texto principal)
-    if model: # Solo iniciar chat si el modelo base se cargó
-        chat = model.start_chat(history=[])
-        logger.info("Google AI model y chat configurados exitosamente")
-    else:
-        chat = None
-        logger.warning("Modelo base no cargado, no se puede iniciar el chat.")
-
-    logger.info("Configuración de Google AI completada (con o sin errores en componentes específicos).")
-
+    chat = model.start_chat(history=[])
+    logger.info("Google AI model y chat configurados exitosamente")
+    logger.info("Google AI configurado exitosamente")
 except Exception as e:
-    logger.error(f"Error general configurando Google AI: {e}", exc_info=True)
-    # Asegurar que todos los modelos/clientes sean None si la configuración general falla
+    logger.error(f"Error configurando Google AI: {e}")
     model = None
-    image_gen_model = None
-    genai_client = None
-    chat = None
 
 # Almacenamiento de contexto por conversación
 conversation_history = {}
@@ -461,115 +444,111 @@ def with_retries(max_retries=3, delay=1):
         return wrapper
     return decorator
 
-@with_retries(max_retries=2, delay=10, allowed_exceptions=(Exception,)) # Ajustar excepciones si es necesario
-def generate_video_from_text(prompt_text, duration_seconds=5, number_of_videos=1, aspect_ratio="16:9"):
-    """Genera videos usando Google Veo 2 via genai.Client."""
-    if not genai_client:
-        # Error claro si el cliente falló al inicializar
-        raise ValueError("El cliente Google AI (genai.Client) necesario para Veo 2 no está configurado.")
-    if not model_veo:
-         raise ValueError("El nombre del modelo Veo 2 no está configurado internamente.")
+@with_retries()
+def generate_video_from_text(prompt_text,
+                             duration_seconds: int = 5,
+                             number_of_videos: int = 1,
+                             aspect_ratio: str = "16:9"):
+    """
+    Genera videos a partir de un prompt de texto usando Google Veo 2.
 
-    logger.info(f"Generando video con Veo 2. Prompt='{prompt_text[:50]}...', Dur={duration_seconds}s, Count={number_of_videos}, Ratio={aspect_ratio}")
+    Args:
+        prompt_text (str): El texto que describe el video a generar.
+        duration_seconds (int): Duración del video en segundos (5-8).
+        number_of_videos (int): Número de videos a generar (1-4).
+
+    Returns:
+        list: Lista de URLs de los videos generados o lista vacía en caso de error.
+    """
+    if not genai_client:
+        logger.error("El cliente de Google AI (genai.Client) no está configurado.")
+        return []
 
     try:
-        # Validar y ajustar parámetros
+        logger.info(f"Generando video desde texto: '{prompt_text}', Duración: {duration_seconds}s, Cantidad: {number_of_videos}")
+
+        # Validar parámetros
         duration_seconds = max(5, min(int(duration_seconds), 8))
         number_of_videos = max(1, min(int(number_of_videos), 4))
-        supported_ratios = ["16:9", "9:16", "1:1"] # Añadir 1:1 si Veo 2 lo soporta
-        if aspect_ratio not in supported_ratios:
-            logger.warning(f"Aspect ratio '{aspect_ratio}' no soportado, usando '16:9'. Soportados: {supported_ratios}")
-            aspect_ratio = "16:9"
 
+        # Configuración específica para Veo 2
         video_config = genai_types.GenerateVideosConfig(
-            # Cambia 'person_generation' según necesites y tus permisos lo permitan
-            person_generation="dont_allow", # Opciones: "allow_adult", "allow_all"
-            aspect_ratio=aspect_ratio,
+            person_generation="dont_allow", # O "allow_adult"
+            aspect_ratio=aspect_ratio, # Leído de los parámetros
             duration_seconds=duration_seconds,
             number_of_videos=number_of_videos
         )
 
         # Iniciar la operación de generación de video
-        logger.debug(f"Llamando a genai_client.models.generate_videos con modelo '{model_veo}' y config: {video_config}")
         operation = genai_client.models.generate_videos(
-            model=model_veo,
+            model="veo-2.0-generate-001", # Asegúrate de que este sea el nombre correcto del modelo Veo 2
             prompt=prompt_text,
             config=video_config,
         )
+
         logger.info(f"Operación de generación de video iniciada: {operation.name}")
 
-        # --- Lógica de Polling (asumiendo que es correcta, sin cambios aquí) ---
-        timeout_seconds = 600 # 10 mins
-        poll_interval_seconds = 30
+        # Esperar a que la operación se complete (con timeouts y logging)
+        timeout_seconds = 300 # 5 minutos de timeout total
+        poll_interval_seconds = 20
         start_time = time.time()
-        while not operation.done():
+
+        while not operation.done:
             current_time = time.time()
             if current_time - start_time > timeout_seconds:
                 logger.error(f"Timeout esperando la generación del video (Operación: {operation.name})")
-                raise TimeoutError(f"Se superó el tiempo de espera ({timeout_seconds}s) para la generación del video.")
-            logger.debug(f"Esperando {poll_interval_seconds}s para op {operation.name}...")
+                return []
+
+            logger.debug(f"Esperando {poll_interval_seconds}s para la operación {operation.name}...")
             time.sleep(poll_interval_seconds)
             try:
-                operation = genai_client.operations.get(operation.name)
+                operation = genai_client.operations.get(operation)
+                logger.debug(f"Estado de la operación {operation.name}: {'Done' if operation.done else 'Running'}")
             except Exception as poll_error:
-                logger.error(f"Error al obtener estado de operación {operation.name}: {poll_error}")
-                time.sleep(poll_interval_seconds * 2) # Esperar más si falla el polling
+                logger.error(f"Error al obtener el estado de la operación {operation.name}: {poll_error}")
+                # Considerar si continuar o fallar aquí
+                time.sleep(poll_interval_seconds) # Esperar antes de reintentar
 
-        # --- Procesamiento de Resultados ---
-        if operation.error:
-             error_message = f"Error en operación Veo ({operation.name}): {operation.error.message}"
-             logger.error(error_message)
-             raise Exception(error_message) # Lanza una excepción genérica con el mensaje de error
-
+        # Procesar la respuesta
         video_urls = []
         if operation.response and hasattr(operation.response, 'generated_videos'):
-            logger.info(f"Operación {operation.name} completada. Procesando {len(operation.response.generated_videos)} video(s).")
-            # ... (Lógica interna para descargar y guardar los videos, como estaba antes) ...
             for n, generated_video in enumerate(operation.response.generated_videos):
                 try:
-                    video_file_info = generated_video.video
-                    if not video_file_info or not hasattr(video_file_info, 'name'): continue
-                    video_bytes = genai_client.files.download(name=video_file_info.name).content
-                    if not video_bytes: continue
-                    filename = get_unique_filename(f"generated_video_{n}", ".mp4")
+                    # Crear un nombre de archivo único
+                    timestamp = int(time.time())
+                    filename = f"generated_video_{timestamp}_{n}.mp4"
                     filepath = os.path.join(UPLOAD_FOLDER, filename)
-                    save_binary_file(filepath, video_bytes)
+
+                    # Descargar y guardar el video
+                    logger.info(f"Descargando video {n+1}/{len(operation.response.generated_videos)}...")
+                    # Usar el método save directamente si está disponible en el objeto video
+                    if hasattr(generated_video.video, 'save'):
+                        generated_video.video.save(filepath)
+                    else:
+                        # Si no, intentar descargar y luego guardar manualmente
+                        # Nota: El SDK podría cambiar, esto es un fallback
+                        file_info = genai_client.files.get(name=generated_video.video.name)
+                        downloaded_content = genai_client.files.download(name=file_info.name)
+                        with open(filepath, 'wb') as f:
+                            f.write(downloaded_content)
+
+                    logger.info(f"Video guardado en: {filepath}")
+
+                    # Crear URL para el video
                     video_url = f"/uploads/{filename}"
                     video_urls.append(video_url)
-                    logger.info(f"Video {n+1} guardado: {filepath}")
+
                 except Exception as video_save_error:
-                    logger.error(f"Error procesando/guardando video {n+1}: {video_save_error}", exc_info=True)
+                    logger.error(f"Error al descargar o guardar el video {n}: {str(video_save_error)}")
+            logger.info(f"Se generaron y guardaron {len(video_urls)} videos.")
         else:
-            logger.warning(f"La operación {operation.name} finalizó pero no se encontraron videos generados.")
+            logger.warning(f"La operación {operation.name} finalizó pero no se encontraron videos generados en la respuesta.")
 
         return video_urls
 
-    # --- Captura de Errores Más Específica ---
-    except ValueError as ve: # Errores de configuración o parámetros inválidos
-        logger.error(f"Error de configuración/valor en generate_video_from_text: {ve}", exc_info=True)
-        raise # Relanzar para que la tarea lo maneje
-    except TimeoutError as te: # Nuestro timeout de polling
-        logger.error(f"Timeout en generate_video_from_text: {te}", exc_info=False)
-        raise # Relanzar
     except Exception as e:
-         error_str = str(e).lower()
-         # Intentar identificar errores comunes de la API de Google
-         if "permission_denied" in error_str or "caller does not have permission" in error_str:
-             logger.error(f"Error de Permiso API para Veo: {e}", exc_info=False)
-             # Lanzar una excepción más específica si quieres manejarla diferente en la tarea
-             raise PermissionError(f"Permiso denegado para acceder al modelo Veo '{model_veo}'. Revisa la API Key.")
-         elif "not found" in error_str and "model" in error_str or "could not find model" in error_str:
-             logger.error(f"Error: Modelo Veo '{model_veo}' no encontrado: {e}", exc_info=False)
-             # Lanzar excepción específica
-             raise LookupError(f"Modelo Veo '{model_veo}' no encontrado o no accesible con esta API Key.")
-         elif "quota" in error_str or "resource_exhausted" in error_str:
-             logger.error(f"Error de Cuota API para Veo: {e}", exc_info=False)
-             # Lanzar excepción específica
-             raise ConnectionAbortedError("Cuota de generación de video excedida. Intenta más tarde.")
-         else:
-             # Error genérico de la API o del proceso
-             logger.error(f"Error inesperado en la generación de video: {e}", exc_info=True)
-             raise # Relanzar error inesperado para que la tarea lo capture
+        logger.error(f"Error en generate_video_from_text: {str(e)}")
+        return []
 
 @with_retries()
 def generate_image_from_text(prompt_text):
