@@ -765,9 +765,7 @@ def generate_image_from_text(prompt_text):
         logger.error(f"Error en generate_image_from_text: {str(e)}", exc_info=True)
         return f"Error al generar la imagen: {str(e)}"
 
-from flask import copy_current_request_context
-
-def get_gemini_response(conversation_history, user_message, images=None, sid=None, conversation_id=None):
+def get_gemini_response(conversation_history, user_message, images=None):
     """
     Genera una respuesta utilizando el modelo Gemini basada en el historial de conversación,
     el mensaje del usuario y opcionalmente imágenes.
@@ -777,28 +775,11 @@ def get_gemini_response(conversation_history, user_message, images=None, sid=Non
         user_message: Mensaje de texto del usuario
         images: Lista de imágenes procesadas para visión (opcional)
     
-    Args:
-        conversation_history: Lista de objetos Message con el historial de la conversación
-        user_message: Mensaje de texto del usuario
-        images: Lista de imágenes procesadas para visión (opcional)
-        sid: Session ID de SocketIO para emitir fragmentos
-        conversation_id: ID de la conversación para emitir fragmentos
-    
     Returns:
-        str: Respuesta completa generada por el modelo (si no se usa streaming o como fallback)
-             None: Si se usa streaming (la respuesta se envía por SocketIO)
+        str: Respuesta generada por el modelo
     """
-    if not sid or not conversation_id:
-        logger.error("SID o Conversation ID faltantes para streaming en get_gemini_response")
-        # Fallback a no streaming si falta SID/ConvID
-        # return "Error: Faltan datos necesarios para el streaming."
-        # Por ahora, intentaremos sin streaming si faltan datos
-        logger.warning("Intentando generar respuesta Gemini sin streaming debido a SID/ConvID faltantes.")
-        # Aquí llamarías a una versión no-stream si la tuvieras, o continuar con stream=False
-        # Para simplificar, continuaremos pero el streaming fallará si sid no está
-        pass # Permitir continuar, pero el log ya indicó el problema
     try:
-        logger.info(f"[Conv: {conversation_id}, SID: {sid}] Generando respuesta con Gemini (streaming={bool(sid and conversation_id)}). Mensaje: {user_message[:50]}{'...' if len(user_message) > 50 else ''}")
+        logger.info(f"Generando respuesta con Gemini. Mensaje: {user_message[:50]}{'...' if len(user_message) > 50 else ''}")
         logger.info(f"Imágenes adjuntas: {len(images) if images else 0}")
         
         # Configurar el modelo Gemini
@@ -820,15 +801,12 @@ def get_gemini_response(conversation_history, user_message, images=None, sid=Non
             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"},
         ]
         
-        # Configurar el modelo Gemini
-        if not GOOGLE_API_KEY:
-            raise ValueError("GOOGLE_API_KEY no está configurada")
-        genai.configure(api_key=GOOGLE_API_KEY)
-        
-        # Determinar el modelo a usar (visión o texto)
-        current_model = vision_model if images else model
-        if not current_model:
-             raise ValueError("Modelo Gemini apropiado (texto o visión) no inicializado.")
+        # Crear el modelo
+        model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash",    # Última versión Gemini 2.0 Flash
+            generation_config=generation_config,
+            safety_settings=safety_settings
+        )
         
         # Preparar el historial de la conversación para el modelo
         chat_history = []
@@ -836,7 +814,7 @@ def get_gemini_response(conversation_history, user_message, images=None, sid=Non
             chat_history.append({"role": msg.role, "parts": [{"text": msg.content}]})
         
         # Iniciar chat con historial
-        chat_session = current_model.start_chat(history=chat_history)
+        chat = model.start_chat(history=chat_history)
         
         # Preparar el mensaje del usuario
         parts = []
@@ -856,94 +834,16 @@ def get_gemini_response(conversation_history, user_message, images=None, sid=Non
             if not user_message:
                 parts.append({"text": "Describe lo que ves en esta imagen"})
         
-        # Enviar mensaje y obtener respuesta en streaming si es posible
-        logger.info(f"[Conv: {conversation_id}, SID: {sid}] Enviando prompt a Gemini (streaming={bool(sid and conversation_id)})...")
+        # Enviar mensaje y obtener respuesta
+        response = chat.send_message(parts)
+        if hasattr(response, 'resolve'):
+            response.resolve()
         
-        # Usar streaming solo si tenemos SID y Conv ID
-        use_stream = bool(sid and conversation_id)
+        # Extraer el texto de la respuesta
+        assistant_response = response.text
+        logger.info(f"Respuesta generada: {assistant_response[:50]}{'...' if len(assistant_response) > 50 else ''}")
         
-        response_stream = chat_session.send_message(
-            parts,
-            generation_config=generation_config,
-            safety_settings=safety_settings,
-            stream=use_stream
-        )
-
-        # Si no usamos streaming, procesar la respuesta completa
-        if not use_stream:
-            logger.warning(f"[Conv: {conversation_id}] Procesando respuesta Gemini sin streaming.")
-            if hasattr(response_stream, 'resolve'): # Gemini puede requerir resolve() para respuestas no streameadas
-                response_stream.resolve()
-            assistant_response = response_stream.text
-            logger.info(f"Respuesta completa (no-stream): {assistant_response[:50]}...")
-            # Guardar y emitir la respuesta completa
-            save_message_to_db(conversation_id, assistant_response, 'assistant')
-            socketio.emit('message', {'role': 'assistant', 'content': assistant_response, 'done': True, 'conversation_id': conversation_id}, room=sid)
-            return None # Tarea completada para no-stream
-
-        # Procesar el stream y emitir fragmentos
-        full_response_text = ""
-        first_chunk = True
-        
-        # Usar copy_current_request_context para emitir desde el hilo del stream
-        @copy_current_request_context
-        def emit_chunk(chunk_text, is_first):
-            socketio.emit('message_progress', {
-                'content': chunk_text,
-                'conversation_id': conversation_id,
-                'start': is_first # Indica si es el primer fragmento
-            }, room=sid)
-
-        try:
-            for chunk in response_stream:
-                if chunk.parts:
-                    chunk_text = ''.join(part.text for part in chunk.parts if hasattr(part, 'text'))
-                    if chunk_text:
-                        full_response_text += chunk_text
-                        emit_chunk(chunk_text, first_chunk)
-                        first_chunk = False # Solo el primer fragmento tiene start=True
-                # Verificar bloqueos de seguridad en el chunk (si aplica)
-                if hasattr(chunk, 'prompt_feedback') and chunk.prompt_feedback.block_reason:
-                    reason = chunk.prompt_feedback.block_reason
-                    logger.warning(f"[Conv: {conversation_id}] Bloqueo de seguridad detectado en stream: {reason}")
-                    error_msg = f"La respuesta fue bloqueada por seguridad ({reason})."
-                    socketio.emit('message', {'role': 'assistant', 'content': error_msg, 'done': True, 'error': True, 'conversation_id': conversation_id}, room=sid)
-                    save_message_to_db(conversation_id, error_msg, 'assistant') # Guardar error
-                    return None # Detener procesamiento
-
-            logger.info(f"[Conv: {conversation_id}, SID: {sid}] Stream de Gemini completado.")
-            # Emitir mensaje final vacío para indicar que el stream terminó
-            socketio.emit('message', {'role': 'assistant', 'content': '', 'done': True, 'conversation_id': conversation_id}, room=sid)
-            
-            # Guardar la respuesta completa en la BD
-            if full_response_text:
-                save_message_to_db(conversation_id, full_response_text, 'assistant')
-            else:
-                # Guardar un mensaje indicando que no hubo respuesta si está vacío
-                save_message_to_db(conversation_id, "(El modelo no generó texto)", 'assistant')
-            
-            return None # Indicar que la respuesta se envió por stream
-
-        except Exception as stream_error:
-            logger.error(f"[Conv: {conversation_id}, SID: {sid}] Error durante el streaming de Gemini: {stream_error}", exc_info=True)
-            error_msg = f"Error durante la generación de la respuesta: {stream_error}"
-            socketio.emit('message', {'role': 'assistant', 'content': error_msg, 'done': True, 'error': True, 'conversation_id': conversation_id}, room=sid)
-            save_message_to_db(conversation_id, error_msg, 'assistant') # Guardar error
-            return None
-        
-    except ValueError as ve:
-        logger.error(f"Error de configuración o inicialización de Gemini: {ve}")
-        if sid and conversation_id:
-            socketio.emit('message', {'role': 'assistant', 'content': f'Error de configuración: {ve}', 'done': True, 'error': True, 'conversation_id': conversation_id}, room=sid)
-            save_message_to_db(conversation_id, f'Error de configuración: {ve}', 'assistant')
-        return None # O devolver el error si no hay sid/convid
-    except Exception as e:
-        logger.error(f"Error inesperado en get_gemini_response: {e}", exc_info=True)
-        error_msg = f"Ocurrió un error inesperado al generar la respuesta: {e}"
-        if sid and conversation_id:
-            socketio.emit('message', {'role': 'assistant', 'content': error_msg, 'done': True, 'error': True, 'conversation_id': conversation_id}, room=sid)
-            save_message_to_db(conversation_id, error_msg, 'assistant')
-        return None # O devolver el error si no hay sid/convid
+        return assistant_response
         
     except Exception as e:
         logger.error(f"Error en get_gemini_response: {str(e)}", exc_info=True)
@@ -1209,37 +1109,17 @@ def generate_response_task(conversation_id, user_message, processed_images, mode
                          # Ensure 'model' is the correct Gemini model instance configured for text
                          if not model:
                              raise Exception("Gemini text model not initialized.")
-                         logger.info(f"[Conversation: {{conversation_id}}] Calling Gemini for web search with prompt: {{search_prompt[:100]}}...") # Log antes de la llamada
                          response = model.generate_content(search_prompt)
-                         logger.info(f"[Conversation: {{conversation_id}}] Gemini web search call successful.") # Log después de la llamada
                          assistant_response = response.text
-                         # Guardar y emitir respuesta de búsqueda web (no streameada)
-                         if assistant_response:
-                             save_message_to_db(conversation_id, assistant_response, 'assistant')
-                             socketio.emit('message', {'role': 'assistant', 'content': assistant_response, 'done': True, 'conversation_id': conversation_id}, room=sid)
-                         else:
-                             error_msg = "La búsqueda web no devolvió resultados."
-                             save_message_to_db(conversation_id, error_msg, 'assistant')
-                             socketio.emit('message', {'role': 'assistant', 'content': error_msg, 'done': True, 'error': True, 'conversation_id': conversation_id}, room=sid)
                      except Exception as search_err:
                          logger.error(f"Error during web search generation: {search_err}")
                          assistant_response = f"Error al realizar la búsqueda web: {search_err}"
-                         # Guardar y emitir error de búsqueda web
-                         save_message_to_db(conversation_id, assistant_response, 'assistant')
-                         socketio.emit('message', {'role': 'assistant', 'content': assistant_response, 'done': True, 'error': True, 'conversation_id': conversation_id}, room=sid)
 
                 elif model_type == 'gemini':
-                    is_streaming = True # Gemini ahora soporta streaming
-                    # Llamar a la función actualizada con SID y Conv ID
-                    get_gemini_response(
-                        previous_messages, 
-                        user_message, 
-                        images=processed_images, 
-                        sid=sid, 
-                        conversation_id=conversation_id
-                    )
-                    # La respuesta se maneja dentro de get_gemini_response vía SocketIO
-                    # No necesitamos hacer nada con assistant_response aquí
+                    if not model:
+                         raise Exception("Gemini model not initialized.")
+                    # Adapt get_gemini_response if needed, ensure it handles base64 images
+                    assistant_response = get_gemini_response(previous_messages, user_message, images=processed_images)
                 
                 elif model_type == 'groq':
                     if not groq_client:
@@ -1266,9 +1146,7 @@ def generate_response_task(conversation_id, user_message, processed_images, mode
                     # if processed_images and groq_vision_model_available:
                     #     groq_model_name = "groq-vision-model-name" # Keep vision model separate if needed
 
-                    logger.info(f"[Conversation: {{conversation_id}}] Calling Groq ({{groq_model_name}}) with {{len(messages_for_groq)}} messages. Streaming enabled.") # Log antes de la llamada
-                    try:
-                        completion = groq_client.chat.completions.create(
+                    completion = groq_client.chat.completions.create(
                         model=groq_model_name, 
                         messages=messages_for_groq,
                         temperature=0.7,
@@ -1278,437 +1156,8 @@ def generate_response_task(conversation_id, user_message, processed_images, mode
                     
                     # Stream response back via Socket.IO
                     full_groq_response = ""
-                    first_groq_chunk = True
-                    
-                    # Usar copy_current_request_context para emitir desde el hilo del stream
-                    @copy_current_request_context
-                    def emit_groq_chunk(chunk_text, is_first):
-                        socketio.emit('message_progress', {
-                            'content': chunk_text,
-                            'conversation_id': conversation_id,
-                            'start': is_first
-                        }, room=sid)
-
-                    try:
-                        for chunk in completion:
-                            if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                                chunk_content = chunk.choices[0].delta.content
-                                full_groq_response += chunk_content
-                                emit_groq_chunk(chunk_content, first_groq_chunk)
-                                first_groq_chunk = False
-                        
-                        logger.info(f"[Conversation: {conversation_id}] Groq stream completed successfully.")
-                        # Emitir mensaje final vacío para indicar fin de stream
-                        socketio.emit('message', {'role': 'assistant', 'content': '', 'done': True, 'conversation_id': conversation_id}, room=sid)
-                        # Guardar respuesta completa
-                        if full_groq_response:
-                            save_message_to_db(conversation_id, full_groq_response, 'assistant')
-                        else:
-                            save_message_to_db(conversation_id, "(Groq no generó texto)", 'assistant')
-                            
-                    except Exception as groq_err:
-                        logger.error(f"[Conversation: {conversation_id}] Error during Groq API call: {groq_err}", exc_info=True)
-                        error_msg = f"Error al contactar Groq: {groq_err}"
-                        socketio.emit('message', {'role': 'assistant', 'content': error_msg, 'error': True, 'done': True, 'conversation_id': conversation_id}, room=sid)
-                        # Guardar mensaje de error
-                        save_message_to_db(conversation_id, error_msg, 'assistant')
-
-                # ... (más lógica de modelos si es necesario) ...
-
-                # Guardar mensaje del usuario (si no es solo una imagen)
-                # Esta lógica ya se movió a la ruta POST /chat
-                # if user_message:
-                #    save_message_to_db(conversation_id, user_message, 'user')
-
-            except Exception as api_err:
-                logger.error(f"[Conv: {conversation_id}] Error during API call or processing: {api_err}", exc_info=True)
-                error_msg = f"Error al procesar la solicitud: {api_err}"
-                # Emitir error general si falla una llamada API
-                socketio.emit('message', {'role': 'assistant', 'content': error_msg, 'error': True, 'done': True, 'conversation_id': conversation_id}, room=sid)
-                save_message_to_db(conversation_id, error_msg, 'assistant')
-
-        except Exception as task_err:
-            logger.error(f"Error in background task for Conv {conversation_id}: {task_err}", exc_info=True)
-            # Emitir un error genérico si la tarea falla catastróficamente
-            socketio.emit('message', {'role': 'assistant', 'content': f"Ocurrió un error interno procesando tu solicitud.", 'error': True, 'done': True, 'conversation_id': conversation_id}, room=sid)
-            # Opcional: guardar un mensaje de error en la BD
-            save_message_to_db(conversation_id, "Error interno en la tarea de fondo.", 'assistant')
-
-# --- Fin de generate_response_task ---
-
-@socketio.on('generate_title')
-def handle_generate_title(data):
-    conversation_id = data.get('conversation_id')
-    first_message = data.get('first_message')
-    model_type = data.get('model_type', 'gemini') # Obtener el tipo de modelo
-
-    if not conversation_id or not first_message:
-        logger.warning("Intento de generar título sin ID de conversación o primer mensaje")
-        return
-
-    conversation = Conversation.query.get(conversation_id)
-    if not conversation or conversation.title != "Nueva Conversación":
-        # No generar si no existe o ya tiene título
-        return
-
-    title_prompt = f"Generate a short, descriptive title (max 3-4 words) for a conversation that starts with: {first_message}"
-    try:
-        if model_type == 'gemini':
-            if not model:
-                logger.error("Modelo Gemini no inicializado para generar título")
-                return
-            logger.info(f"[Conversation: {{conversation_id}}] Calling Gemini for title generation.")
-            title_response = model.generate_content(title_prompt)
-            logger.info(f"[Conversation: {{conversation_id}}] Gemini title generation successful.")
-            conversation.title = title_response.text[:200]
-        elif model_type == 'groq':
-            if not groq_client:
-                logger.error("Cliente Groq no inicializado para generar título")
-                return
-            logger.info(f"[Conversation: {{conversation_id}}] Calling Groq for title generation.")
-            title_completion = groq_client.chat.completions.create(
-                model="meta-llama/llama-4-maverick-17b-128e-instruct",
-                messages=[{"role": "user", "content": title_prompt}],
-                max_tokens=10
-            )
-            logger.info(f"[Conversation: {{conversation_id}}] Groq title generation successful.")
-            conversation.title = title_completion.choices[0].message.content[:200]
-        else:
-            logger.warning(f"Tipo de modelo desconocido para generar título: {model_type}")
-            return
-
-        db.session.commit()
-        emit('conversation_update', {
-            'id': conversation_id,
-            'title': conversation.title
-        }, room=request.sid) # Emitir solo al cliente que lo solicitó
-    except Exception as title_err:
-        logger.error(f"[Conversation: {{conversation_id}}] Error generating title: {{title_err}}")
-        db.session.rollback()
-
-
-@socketio.on('edit_image')
-def handle_edit_image(data):
-    conversation_id = data.get('conversation_id')
-    prompt = data.get('prompt')
-    image_data_url = data.get('image') # Base64 data URL
-
-    if not conversation_id or not prompt or not image_data_url:
-        emit('image_edit_error', {'message': 'Faltan datos para la edición de imagen.'})
-        return
-
-    if not image_gen_model:
-        emit('image_edit_error', {'message': 'El modelo de generación de imágenes no está configurado.'})
-        return
-
-    try:
-        # Decodificar la imagen base64
-        header, encoded = image_data_url.split(',', 1)
-        image_bytes = base64.b64decode(encoded)
-        mime_type = header.split(';')[0].split(':')[1]
-
-        # Procesar la imagen (validar, convertir a RGB si es necesario)
-        img_io = io.BytesIO(image_bytes)
-        processed_img_io = process_image(img_io)
-        if not processed_img_io:
-            emit('image_edit_error', {'message': 'Error al procesar la imagen.'})
-            return
-
-        # Preparar la entrada para el modelo Gemini Flash Image Gen
-        image_part = {
-            "inline_data": {
-                "mime_type": "image/jpeg", # process_image convierte a JPEG
-                "data": base64.b64encode(processed_img_io.getvalue()).decode('utf-8')
-            }
-        }
-        prompt_part = {"text": prompt}
-
-        logger.info(f"[Conversation: {{conversation_id}}] Calling Gemini Image Gen for editing.")
-        # Llamar al modelo de generación/edición de imágenes
-        response = image_gen_model.generate_content([prompt_part, image_part])
-        logger.info(f"[Conversation: {{conversation_id}}] Gemini Image Gen call successful.")
-
-        # Asumiendo que la respuesta contiene la imagen editada en un formato accesible
-        # Esto puede variar según la API; ajustar según sea necesario.
-        # Ejemplo: si la respuesta tiene la imagen en `response.candidates[0].content.parts[0].inline_data`
-        if response.candidates and response.candidates[0].content.parts:
-            edited_image_part = response.candidates[0].content.parts[0]
-            if edited_image_part.inline_data:
-                edited_mime_type = edited_image_part.inline_data.mime_type
-                edited_image_data = edited_image_part.inline_data.data
-                edited_image_data_url = f"data:{{edited_mime_type}};base64,{{edited_image_data}}"
-
-                # Emitir la imagen editada
-                emit('image_edited', {
-                    'conversation_id': conversation_id,
-                    'edited_image_url': edited_image_data_url
-                })
-                # Guardar mensaje (opcional, ¿cómo representar la edición?)
-                # save_message_to_db(conversation_id, f"Imagen editada con prompt: {{prompt}}", 'assistant')
-            else:
-                 emit('image_edit_error', {'message': 'La respuesta del modelo no contenía datos de imagen.'})
-        else:
-            emit('image_edit_error', {'message': 'Respuesta inesperada del modelo de edición de imágenes.'})
-
-    except Exception as e:
-        logger.error(f"Error editing image: {e}")
-        emit('image_edit_error', {'message': f'Error interno del servidor: {e}'})
-
-
-# Ruta para manejar mensajes de chat (reemplaza la lógica anterior)
-@socketio.on('message')
-def handle_message(data):
-    user_message = data.get('message', '')
-    conversation_id = data.get('conversation_id')
-    model_type = data.get('model_type', 'gemini') # 'gemini' or 'groq'
-    images_data = data.get('images', []) # Lista de data URLs base64
-    is_web_search = data.get('is_web_search', False)
-    is_image_edit = data.get('is_image_edit', False) # Flag para edición
-
-    logger.info(f"Received message for conversation {conversation_id} with model {model_type}. Web search: {is_web_search}, Image Edit: {is_image_edit}")
-
-    if not conversation_id:
-        logger.error("No conversation_id provided")
-        emit('error', {'message': 'No se proporcionó ID de conversación.'})
-        return
-
-    # Procesar imágenes adjuntas (si las hay)
-    processed_images = []
-    if images_data:
-        for img_data_url in images_data:
-            try:
-                header, encoded = img_data_url.split(',', 1)
-                image_bytes = base64.b64decode(encoded)
-                mime_type = header.split(';')[0].split(':')[1]
-                img_io = io.BytesIO(image_bytes)
-                
-                # Usar process_image para validar y preparar
-                processed_img_io = process_image(img_io)
-                if processed_img_io:
-                    processed_images.append({
-                        "mime_type": "image/jpeg", # process_image convierte a JPEG
-                        "data": base64.b64encode(processed_img_io.getvalue()).decode('utf-8')
-                    })
-                else:
-                    logger.warning(f"No se pudo procesar una imagen para la conversación {conversation_id}")
-                    # Opcional: emitir un error al cliente sobre la imagen específica
-            except Exception as img_err:
-                logger.error(f"Error procesando imagen base64: {img_err}")
-                emit('error', {'message': f'Error procesando una imagen: {img_err}'})
-                # Considerar si continuar o detenerse si una imagen falla
-
-    # Guardar mensaje del usuario ANTES de llamar a la IA (si no es solo imagen)
-    if user_message:
-        save_message_to_db(conversation_id, user_message, 'user')
-        # Emitir mensaje del usuario de vuelta al cliente para confirmación visual
-        emit('message', {
-            'role': 'user',
-            'content': user_message,
-            'conversation_id': conversation_id
-        })
-
-    # Obtener historial de la conversación desde la BD
-    try:
-        previous_messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
-        conversation_history_text = []
-        for msg in previous_messages:
-            conversation_history_text.append({"role": msg.role, "content": msg.content})
-    except Exception as db_err:
-        logger.error(f"Error fetching conversation history: {db_err}")
-        emit('message', {'role': 'assistant', 'content': f"Error al cargar el historial: {db_err}", 'error': True})
-        return
-
-    # Generar título si es necesario (movido a su propio evento 'generate_title')
-    # ... (código de generación de título eliminado de aquí)
-
-    # Lógica principal de generación de respuesta
-    try:
-        assistant_response = ""
-        is_streaming = False
-
-        # --- Lógica de Selección de Modelo y Llamada a API --- #
-        if is_web_search:
-            logger.info(f"[Conversation: {{conversation_id}}] Performing web search for: {{user_message[:100]}}...")
-            try:
-                search_prompt = f"Actúa como un asistente de búsqueda web experto. Busca información sobre: {user_message}. Proporciona una respuesta detallada y actualizada."
-                if not model:
-                    raise Exception("Gemini text model not initialized.")
-                logger.info(f"[Conversation: {{conversation_id}}] Calling Gemini for web search...")
-                response = model.generate_content(search_prompt)
-                logger.info(f"[Conversation: {{conversation_id}}] Gemini web search call successful.")
-                assistant_response = response.text
-                emit('message', {'role': 'assistant', 'content': assistant_response})
-                save_message_to_db(conversation_id, assistant_response, 'assistant')
-            except Exception as search_err:
-                logger.error(f"[Conversation: {{conversation_id}}] Error during web search generation: {search_err}")
-                assistant_response = f"Error al realizar la búsqueda web: {search_err}"
-                emit('message', {'role': 'assistant', 'content': assistant_response, 'error': True})
-                save_message_to_db(conversation_id, assistant_response, 'assistant')
-
-        elif model_type == 'groq':
-            if not groq_client:
-                raise Exception("Groq client not configured.")
-            is_streaming = True
-            
-            # Preparar mensajes para Groq (incluyendo historial)
-            messages_for_groq = []
-            for msg in conversation_history_text:
-                role = msg['role'] if msg['role'] in ['user', 'assistant'] else 'user'
-                messages_for_groq.append({"role": role, "content": msg['content']})
-            
-            user_content_for_groq = user_message
-            # Nota: La lógica de imágenes para Groq Vision podría necesitar ajustes si se usa
-            # if processed_images:
-            #     user_content_for_groq += "\n[Nota: El usuario adjuntó imágenes. No puedo verlas directamente.]"
-            messages_for_groq.append({"role": "user", "content": user_content_for_groq})
-
-            # Seleccionar modelo Groq adecuado (ej. Llama 3 8b)
-            groq_model_name = "llama3-8b-8192" # Modelo rápido para streaming
-            common_params = {
-                "temperature": 0.7,
-                "max_tokens": 2048,
-                "top_p": 1,
-                "stream": True, # Habilitar streaming
-                "stop": None
-            }
-
-            logger.info(f"[Conversation: {conversation_id}] Calling Groq ({groq_model_name}) streaming with {len(messages_for_groq)} messages.")
-            try:
-                completion_stream = groq_client.chat.completions.create(
-                    model=groq_model_name,
-                    messages=messages_for_groq,
-                    **common_params
-                )
-
-                accumulated_response = ""
-                # Emitir un evento inicial para indicar que el streaming ha comenzado
-                emit('message_progress', {
-                    'conversation_id': conversation_id,
-                    'start': True # Indicador de inicio
-                })
-
-                for chunk in completion_stream:
-                    if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
-                        chunk_content = chunk.choices[0].delta.content
-                        accumulated_response += chunk_content
-                        # Emitir cada fragmento al frontend
-                        emit('message_progress', {
-                            'content': chunk_content,
-                            'conversation_id': conversation_id
-                        })
-                        time.sleep(0.01) # Pequeña pausa para no saturar
-
-                # Emitir el final del mensaje con 'done: True'
-                emit('message', {
-                    'role': 'assistant',
-                    'conversation_id': conversation_id,
-                    'done': True # Indicador de finalización
-                })
-                logger.info(f"[Conversation: {conversation_id}] Groq streaming call successful. Full response length: {len(accumulated_response)}")
-                save_message_to_db(conversation_id, accumulated_response, 'assistant')
-
-            except Exception as groq_err:
-                logger.error(f"[Conversation: {conversation_id}] Error during Groq streaming API call: {groq_err}")
-                emit('message', {'role': 'assistant', 'content': f"Error al contactar Groq: {groq_err}", 'error': True, 'conversation_id': conversation_id})
-                save_message_to_db(conversation_id, f"Error al contactar Groq: {groq_err}", 'assistant')
-
-        else:  # default to gemini
-            if not model:
-                 raise Exception("Gemini model not initialized.")
-
-            # Preparar el contenido para la llamada a la API de Gemini, incluyendo el historial
-            contents_for_gemini = []
-            for msg in conversation_history_text:
-                role = 'model' if msg['role'] == 'assistant' else msg['role']
-                contents_for_gemini.append({"role": role, "parts": [{"text": msg['content']}]})
-
-            current_user_parts = []
-            if user_message:
-                current_user_parts.append({"text": user_message})
-            if processed_images:
-                for img in processed_images:
-                    current_user_parts.append({
-                        "inline_data": {
-                            "mime_type": img['mime_type'],
-                            "data": img['data']
-                        }
-                    })
-                if not user_message:
-                    current_user_parts.append({"text": "Describe lo que ves en esta imagen"})
-            
-            if current_user_parts:
-                contents_for_gemini.append({"role": "user", "parts": current_user_parts})
-            
-            if contents_for_gemini:
-                logger.info(f"[Conversation: {{conversation_id}}] Calling Gemini generate_content with {{len(contents_for_gemini)}} history items.")
-                try:
-                    response = model.generate_content(contents=contents_for_gemini)
-                    if hasattr(response, 'resolve'):
-                        response.resolve()
-                    assistant_response = response.text
-                    logger.info(f"[Conversation: {{conversation_id}}] Gemini generate_content call successful.")
-                    emit('message', {'role': 'assistant', 'content': assistant_response})
-                    save_message_to_db(conversation_id, assistant_response, 'assistant')
-                except Exception as gemini_err:
-                    logger.error(f"[Conversation: {{conversation_id}}] Error during Gemini generate_content call: {{gemini_err}}")
-                    error_details = str(gemini_err)
-                    # Intentar obtener más detalles del error si es una APIError
-                    if hasattr(gemini_err, 'response') and hasattr(gemini_err.response, 'text'):
-                         error_details += f" | Response: {{gemini_err.response.text[:500]}}..." # Limitar longitud
-                    elif isinstance(gemini_err, genai_types.BlockedPromptException):
-                         error_details = "El prompt fue bloqueado por razones de seguridad."
-                         logger.warning(f"[Conversation: {{conversation_id}}] Prompt blocked: {{gemini_err}}")
-                    elif isinstance(gemini_err, genai_types.StopCandidateException):
-                         error_details = "La generación fue detenida inesperadamente."
-                         logger.warning(f"[Conversation: {{conversation_id}}] Generation stopped: {{gemini_err}}")
-
-                    emit('message', {'role': 'assistant', 'content': f"Error al contactar Gemini: {{error_details}}", 'error': True})
-                    save_message_to_db(conversation_id, f"Error al contactar Gemini: {{error_details}}", 'assistant')
-            else:
-                assistant_response = "Por favor, envía un mensaje o una imagen."
-                logger.warning(f"[Conversation: {{conversation_id}}] Attempted generate_content call with no content.")
-                emit('message', {'role': 'assistant', 'content': assistant_response})
-                # No guardar este mensaje 'error' en DB ya que es un problema de entrada
-
-    except Exception as e:
-        logger.error(f"[Conversation: {{conversation_id}}] General error processing message: {{e}}", exc_info=True)
-        emit('message', {'role': 'assistant', 'content': f"Ocurrió un error inesperado: {{e}}", 'error': True})
-        # Guardar error genérico
-        save_message_to_db(conversation_id, f"Error inesperado: {{e}}", 'assistant')
-
-
-@app.route('/search', methods=['POST'])
-@login_required
-def handle_search():
-    if not model:
-        return jsonify({'error': 'Modelo Gemini no inicializado', 'status': 'error'}), 500
-
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'Solicitud inválida', 'status': 'error'}), 400
-
-    query = data.get('query', '')
-    session_id = data.get('session_id', 'default') # session_id no se usa actualmente aquí
-
-    if not query:
-        return jsonify({
-            'error': 'No se proporcionó consulta de búsqueda',
-            'status': 'error'
-        }), 400
-
-    try:
-        logger.info(f"[Web Search Route] Calling Gemini for web search query: {{query[:100]}}...")
-        response = model.generate_content(
-            f"""Actúa como un asistente de búsqueda web experto. 
-            Busca información sobre: {query}
-            
-            Proporciona una respuesta detallada y actualizada basada en la información disponible.
-            Si es posible, incluye fuentes o referencias relevantes."""
-        )
-        logger.info(f"[Web Search Route] Gemini web search call successful.")
-        
-        return jsonify({
-            'response': response.text,
+                    for chunk in completion:
+                        if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
                             chunk_content = chunk.choices[0].delta.content
                             full_groq_response += chunk_content
                             # Emit progress chunks
@@ -1843,7 +1292,13 @@ def handle_socket_message(data):
                         except Exception as decode_error:
                             logger.error(f"Error decodificando base64: {decode_error}")
                             continue
-                except Exception as e:
+                except Exception as inner_e: # Added missing except block
+                    logger.error(f"Error processing file data structure: {inner_e}")
+                    continue
+                # This except handles errors in the outer loop logic, not the inner try
+                # except Exception as e: # This was likely misplaced or intended for outer scope
+                #    logger.error(f"Error general procesando imagen: {str(e)}")
+                #    continue
                     logger.error(f"Error general procesando imagen: {str(e)}")
                     continue
 

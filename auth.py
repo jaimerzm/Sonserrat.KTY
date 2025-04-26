@@ -135,16 +135,10 @@ def login_google():
 
 @auth.route('/login/google/callback')
 def google_callback():
-    current_app.logger.info("Entered google_callback")
     try:
         # Obtener token de acceso y datos del usuario
-        current_app.logger.info("Attempting to authorize access token...")
         token = oauth.google.authorize_access_token()
-        current_app.logger.info(f"Access token obtained: {token is not None}")
-        
-        current_app.logger.info("Attempting to get user info...")
         user_info = oauth.google.get('userinfo').json()
-        current_app.logger.info(f"User info obtained: {user_info.get('email')}")
         
         # Verificar si el usuario ya existe por google_id
         user = User.query.filter_by(google_id=user_info['id']).first()
@@ -178,20 +172,16 @@ def google_callback():
                 db.session.add(user)
         
         # Actualizar y guardar cambios
-        current_app.logger.info(f"Committing DB changes for user: {user.email}")
         db.session.commit()
-        current_app.logger.info("DB changes committed")
         
         # Iniciar sesión
         login_user(user, remember=True, duration=timedelta(days=31))
         session.permanent = True
         session['user_id'] = user.id
         session['username'] = user.username
-        current_app.logger.info(f"User {user.username} logged in successfully via Google")
         
         return redirect(url_for('index'))
     except Exception as e:
-        current_app.logger.error(f'Error in google_callback: {str(e)}', exc_info=True) # Log the full traceback
         flash(f'Error al iniciar sesión con Google: {str(e)}')
         return redirect(url_for('auth.login'))
 
