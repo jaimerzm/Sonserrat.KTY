@@ -412,30 +412,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Manejar las respuestas del socket
     socket.on('message', (data) => {
-        console.log("Mensaje recibido:", data); // Para depuración
+        console.log("Mensaje final/completo recibido:", data); // Para depuración
 
         const loadingIndicator = document.querySelector('.loading-indicator');
         if (loadingIndicator) {
             loadingIndicator.remove();
         }
 
-        const progressContainer = document.querySelector('.progress-container');
+        // Buscar el contenedor de progreso específico de esta conversación
+        const progressContainer = document.querySelector(`.progress-container[data-conversation-id="${data.conversation_id}"]`);
 
         // Si es un mensaje final de streaming (done: true) y había un contenedor de progreso
         if (data.done && progressContainer) {
-            // Finalizar el mensaje en progreso, no añadir uno nuevo si el contenido está vacío
-            progressContainer.classList.remove('progress-container'); // Quitar clase de progreso
-            // No hacer nada más si data.content está vacío, el contenido ya está en progressContainer
-            if (data.content) { // Si el mensaje final tiene contenido (caso no-streaming o error)
-                 progressContainer.remove(); // Eliminar el contenedor de progreso si existía
-                 addMessage(data.content, false); // Añadir el contenido final como mensaje normal
+            console.log(`Finalizando streaming para conversación ${data.conversation_id}`);
+            // Finalizar el mensaje en progreso, quitar la clase 'progress-container'
+            progressContainer.classList.remove('progress-container');
+            // Quitar el ID de conversación como atributo de datos, ya no es necesario para progreso
+            progressContainer.removeAttribute('data-conversation-id');
+            // Si el mensaje final tiene contenido (caso raro o error), añadirlo
+            if (data.content) {
+                 const textDiv = progressContainer.querySelector('.progress-text');
+                 if (textDiv) textDiv.textContent += data.content; // Añadir al contenido existente
             }
+            // Asegurarse de que el scroll esté al final
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         } else if (data.role === 'assistant' && data.content) {
             // Mensaje normal (no streaming) o error con contenido
             if (progressContainer) {
-                progressContainer.remove(); // Limpiar si había progreso anterior
+                progressContainer.remove(); // Limpiar si había progreso anterior para esta conversación
             }
-            addMessage(data.content, false);
+            addMessage(data.content, false); // Añadir como mensaje completo
         } else if (data.role === 'user' && data.content) {
             // Los mensajes del usuario ya se añaden en sendMessage
             // No hacer nada aquí para evitar duplicados
@@ -452,39 +458,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Manejar actualizaciones de progreso para respuestas en streaming
     socket.on('message_progress', (data) => {
-        let progressContainer = document.querySelector('.progress-container');
-        
-        // Si no existe el contenedor de progreso, crearlo
-        if (!progressContainer) {
+        console.log("Progreso recibido:", data); // Para depuración
+        let progressContainer = document.querySelector(`.progress-container[data-conversation-id="${data.conversation_id}"]`);
+
+        // Si es el inicio del stream (start: true) o no existe el contenedor, crearlo
+        if (data.start || !progressContainer) {
             // Eliminar el indicador de carga si existe
             const loadingIndicator = document.querySelector('.loading-indicator');
             if (loadingIndicator) {
                 loadingIndicator.remove();
             }
-            
+
+            // Si ya existe uno (raro, pero por seguridad), quitarlo antes de crear el nuevo
+            if (progressContainer) progressContainer.remove();
+
+            console.log(`Creando contenedor de progreso para conversación ${data.conversation_id}`);
             progressContainer = document.createElement('div');
-            progressContainer.className = 'message assistant-message progress-container'; // Añadir clase progress-container
-            
+            // Añadir clase progress-container y el ID de conversación como atributo
+            progressContainer.className = 'message assistant-message progress-container';
+            progressContainer.dataset.conversationId = data.conversation_id;
+
             const bubbleDiv = document.createElement('div');
             bubbleDiv.className = 'message-bubble';
-            
+
             const textDiv = document.createElement('div');
-            textDiv.className = 'message-text progress-text'; // Usar clase específica para el texto en progreso
-            textDiv.textContent = ''; // Iniciar vacío
-            
+            textDiv.className = 'message-text progress-text'; // Usar clase específica
+            textDiv.textContent = data.content || ''; // Iniciar con el primer fragmento si existe
+
             bubbleDiv.appendChild(textDiv);
             progressContainer.appendChild(bubbleDiv);
             messagesContainer.appendChild(progressContainer);
+        } else if (data.content) {
+            // Si no es el inicio y hay contenido, añadir al contenedor existente
+            const textDiv = progressContainer.querySelector('.progress-text');
+            if (textDiv) { // Asegurarse que textDiv existe
+                 textDiv.textContent += data.content;
+            }
         }
-        
-        // Actualizar el contenido del contenedor de progreso
-        const textDiv = progressContainer.querySelector('.progress-text');
-        if (textDiv) { // Asegurarse que textDiv existe
-             textDiv.textContent += data.content;
+
+        // Scroll al final solo si hay un contenedor de progreso activo
+        if (progressContainer) {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
-        
-        // Scroll al final
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
     });
 
     // Función para mostrar el indicador de carga
